@@ -10,5 +10,8 @@ DATABASE_URL=postgresql://username:password@localhost:5432/events_db
 
 # Application Settings
 LOG_LEVEL=INFO
-CITY=New York City
+DEFAULT_CITY=New York City
+DEFAULT_COUNTRY=US
+DEFAULT_STATE=NY
+DEFAULT_TIMEZONE=America/New_York
 TARGET_MONTH=October 2025
