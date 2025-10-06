@@ -1,0 +1,14 @@
+# Copy this file to .env and fill in your actual API keys
+# API Keys - Get these from the respective platforms
+EVENTBRITE_API_KEY=your_eventbrite_api_key_here
+MEETUP_API_KEY=your_meetup_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+APIFY_API_KEY=your_apify_api_key_here
+
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/events_db
+
+# Application Settings
+LOG_LEVEL=INFO
+CITY=New York City
+TARGET_MONTH=October 2025
