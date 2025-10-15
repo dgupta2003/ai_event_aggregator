@@ -1,0 +1,85 @@
+(function() {
+    // Targeting the main grid items, which are less likely to change than specific 'eds' classes.
+    const EVENT_CARD_SELECTOR = '.event-card-details'; 
+    
+    // Selectors for specific data within the card. These look for the actual content text.
+    const TITLE_SELECTOR = '[data-event-details]'; // This often wraps the title link/text
+    const DATE_TIME_SELECTOR = 'p.event-card-time'; // Assuming the time is in a <p> tag
+    const LOCATION_SELECTOR = 'p.event-card-venue-link'; // Assuming the venue is in a <p> tag
+
+    const events = [];
+    
+    // Find all event cards
+    const eventCards = document.querySelectorAll(EVENT_CARD_SELECTOR);
+
+    if (eventCards.length === 0) {
+        // Fallback check using a very generic card structure
+        const genericCards = document.querySelectorAll('article[data-event-id]');
+        if (genericCards.length > 0) {
+             console.warn("Using fallback selector. Results may be less precise.");
+             eventCards = genericCards;
+        } else {
+             console.error("No event cards found with primary or fallback selectors. Eventbrite's structure has changed significantly.");
+             return;
+        }
+    }
+
+    eventCards.forEach(card => {
+        try {
+            // Extract Title - sometimes it's the inner text of the entire block
+            const titleEl = card.querySelector(TITLE_SELECTOR) || card; // Use the card itself if specific title selector fails
+            const title = titleEl.innerText.trim().split('\n')[0]; // Grab the first line of text as the title
+
+            // Extract Date and Time
+            const dateTimeEl = card.querySelector(DATE_TIME_SELECTOR);
+            let dateTime = dateTimeEl ? dateTimeEl.innerText.trim().replace(/\s\s+/g, ' ') : 'N/A';
+            
+            // Extract Location/Venue
+            const locationEl = card.querySelector(LOCATION_SELECTOR);
+            let location = locationEl ? locationEl.innerText.trim() : 'N/A';
+            
+            // If the time or location is N/A, try to get it from the main text block
+            if (dateTime === 'N/A' || location === 'N/A') {
+                const textBlock = card.innerText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+                
+                // Heuristic attempt: Look for text that looks like a date/time or location
+                // This is very unreliable but can sometimes catch data.
+                if (dateTime === 'N/A' && textBlock.length > 1) {
+                    dateTime = textBlock[1]; 
+                }
+                if (location === 'N/A' && textBlock.length > 2) {
+                    location = textBlock[2];
+                }
+            }
+
+
+            events.push({
+                Title: title,
+                DateTime: dateTime,
+                Location: location
+            });
+            
+        } catch (e) {
+            // console.warn("Skipped an event due to parsing error:", e);
+        }
+    });
+
+    console.log(`\nSUCCESSFULLY SCRAPED ${events.length} EVENTS.`);
+    console.log("-----------------------------------------------");
+    
+    // Format the result as a simple CSV string using tabs for separation
+    const header = ["Title", "Date & Time", "Location"];
+    const csvContent = events.map(e => [
+        `"${e.Title.replace(/"/g, '""')}"`, 
+        `"${e.DateTime.replace(/"/g, '""')}"`,
+        `"${e.Location.replace(/"/g, '""')}"`
+    ].join('\t')).join('\n'); 
+
+    console.log(header.join('\t'));
+    console.log(csvContent);
+    console.log("-----------------------------------------------");
+    console.log("The data between the dashed lines uses tabs as separators and is ready to be copied into a spreadsheet.");
+
+    // Return the array for direct console manipulation
+    return events;
+})();
