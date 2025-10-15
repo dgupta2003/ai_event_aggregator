@@ -202,6 +202,34 @@ class WebScraper(BaseCollector):
                 event['start_time'] = parsed_date
         
         return event
+    
+    def _deduplicate_events(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Remove duplicate events based on URL or title+date
+        
+        Args:
+            events: List of events
+            
+        Returns:
+            List of unique events
+        """
+        seen = set()
+        unique_events = []
+        
+        for event in events:
+            # Create a unique key from URL or title+start_time
+            url = event.get('url', '')
+            title = event.get('title', '')
+            start_time = event.get('start_time', '')
+            
+            key = url if url else f"{title}_{start_time}"
+            
+            if key and key not in seen:
+                seen.add(key)
+                unique_events.append(event)
+        
+        self.logger.info(f"Deduplication: {len(events)} -> {len(unique_events)} events")
+        return unique_events
 
 
 class LumaScraper(WebScraper):
@@ -220,29 +248,35 @@ class LumaScraper(WebScraper):
         try:
             page = await context.new_page()
             
-            # Navigate to search page
-            search_url = f"{self.base_url}/search?q={city}+tech"
-            await page.goto(search_url, wait_until='networkidle')
+            # Navigate to discover page
+            discover_url = f"{self.base_url}/discover"
+            self.logger.info(f"Navigating to {discover_url}")
+            await page.goto(discover_url, wait_until='networkidle')
             
-            # Wait for events to load
-            await page.wait_for_selector('.event-card, .event-item', timeout=10000)
+            # Wait a bit for dynamic content to load
+            await page.wait_for_timeout(2000)
             
             # Extract events from current page
             events = await self._extract_events_from_page(page)
             all_events.extend(events)
             
-            # Handle pagination if needed
+            self.logger.info(f"Scraped {len(events)} events from Luma discover page")
+            
+            # Try scrolling to load more events (Luma might use infinite scroll)
             try:
-                next_button = await page.query_selector('a[aria-label="Next"], .next-page')
-                if next_button:
-                    await next_button.click()
-                    await page.wait_for_load_state('networkidle')
+                for _ in range(3):  # Scroll 3 times
+                    await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                    await page.wait_for_timeout(1000)
                     
-                    # Extract more events
+                    # Extract any new events
                     more_events = await self._extract_events_from_page(page)
-                    all_events.extend(more_events)
-            except:
-                pass  # No pagination or pagination failed
+                    # Only add events we don't already have
+                    new_count = len(more_events)
+                    if new_count > len(all_events):
+                        all_events = more_events
+                        self.logger.info(f"After scroll: {new_count} total events")
+            except Exception as e:
+                self.logger.warning(f"Error during scrolling: {e}")
             
             await page.close()
             
@@ -256,60 +290,91 @@ class LumaScraper(WebScraper):
         events = []
         
         try:
-            # Get page content
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
+            # Get all links and filter for event patterns
+            # Luma uses short alphanumeric codes like /c7gldzl7 for events
+            all_links = await page.query_selector_all('a')
+            event_links = []
             
-            # Find event elements (these selectors may need adjustment based on actual Luma HTML)
-            event_elements = soup.find_all(['div', 'article'], class_=re.compile(r'event|card'))
+            # Known navigation/page links to exclude
+            exclude_patterns = {'/discover', '/signin', '/phoenix', '/tech', '/food', '/ai', '/arts', 
+                              '/climate', '/fitness', '/wellness', '/crypto', '/scaryparty'}
             
-            for element in event_elements:
+            for link in all_links:
+                href = await link.get_attribute('href')
+                # Match 8-character alphanumeric codes that aren't navigation links
+                if href and re.match(r'^/[a-z0-9]{8}$', href) and href not in exclude_patterns:
+                    event_links.append(link)
+            
+            self.logger.info(f"Found {len(event_links)} potential event links")
+            
+            # Extract data from each event link
+            for link in event_links[:50]:  # Limit to first 50 events
                 try:
-                    # Extract event information
-                    title_elem = element.find(['h1', 'h2', 'h3', 'h4'], class_=re.compile(r'title|name'))
-                    title = title_elem.get_text(strip=True) if title_elem else ''
-                    
-                    # Skip if no title
-                    if not title:
+                    # Get the href
+                    href = await link.get_attribute('href')
+                    if not href:
                         continue
                     
-                    # Extract URL
-                    link_elem = element.find('a', href=True)
-                    url = urljoin(self.base_url, link_elem['href']) if link_elem else self.base_url
+                    url = urljoin(self.base_url, href)
                     
-                    # Extract date/time (this will need to be adjusted based on actual HTML structure)
-                    date_elem = element.find(['time', 'span'], class_=re.compile(r'date|time'))
-                    start_time = date_elem.get_text(strip=True) if date_elem else ''
+                    # Get the title from aria-label (Luma stores event titles there)
+                    title = await link.get_attribute('aria-label')
+                    if not title:
+                        # Fallback to text content
+                        title = await link.text_content()
+                    title = title.strip() if title else ''
                     
-                    # Extract venue/location
-                    venue_elem = element.find(['span', 'div'], class_=re.compile(r'venue|location|address'))
-                    venue_name = venue_elem.get_text(strip=True) if venue_elem else ''
+                    # Skip if no meaningful title
+                    if not title or len(title) < 5:
+                        continue
                     
-                    # Extract description
-                    desc_elem = element.find(['p', 'div'], class_=re.compile(r'description|summary'))
-                    description = desc_elem.get_text(strip=True) if desc_elem else ''
+                    # Try to find parent container for more info
+                    venue_name = ''
+                    start_time = ''
+                    description = ''
+                    
+                    try:
+                        parent_html = await link.evaluate('''element => {
+                            const parent = element.closest("article, div[class*='event'], div[class*='card']");
+                            return parent ? parent.innerHTML : '';
+                        }''')
+                        
+                        if parent_html:
+                            parent_soup = BeautifulSoup(parent_html, 'html.parser')
+                            
+                            # Try to find date/time
+                            time_elem = parent_soup.find('time')
+                            if time_elem:
+                                start_time = time_elem.get('datetime', '') or time_elem.get_text(strip=True)
+                            
+                            # Try to find location
+                            location_elem = parent_soup.find(text=re.compile(r'📍|🌎'))
+                            if location_elem:
+                                venue_name = location_elem.strip()
+                    except Exception as e:
+                        # Parent extraction failed, continue with basic info
+                        pass
                     
                     # Create event object
                     event = {
                         'id': f"luma_{hash(url)}",
                         'source_id': str(hash(url)),
                         'source': 'luma',
-                        'title': title,
+                        'title': self.clean_text(title),
                         'description': description,
-                        'start_time': start_time,
-                        'end_time': '',  # Luma might not have end times
+                        'start_time': start_time or datetime.now().isoformat(),
+                        'end_time': '',
                         'url': url,
                         'venue_name': venue_name,
-                        'city': '',  # We'll need to extract this
-                        'category': 'tech',
+                        'city': '',
+                        'category': 'event',
                         'tags': [],
                         'created_at': datetime.now().isoformat(),
                         'updated_at': datetime.now().isoformat(),
                     }
                     
-                    # Clean and validate
-                    event = self._clean_event_data(event)
-                    if self.validate_event_data(event):
+                    # Validate and add
+                    if event['title'] and event['url']:
                         events.append(event)
                 
                 except Exception as e:
@@ -319,6 +384,7 @@ class LumaScraper(WebScraper):
         except Exception as e:
             self.logger.error(f"Error extracting Luma events: {e}")
         
+        self.logger.info(f"Extracted {len(events)} valid events from Luma")
         return events
 
 

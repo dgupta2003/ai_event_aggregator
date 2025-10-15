@@ -76,11 +76,16 @@ ai_events_aggregator/
 
 5. **Run the application**
    ```bash
-   # Start the web interface
-   streamlit run src/frontend/app.py
-   
-   # Or run data collection
+   # Run data collection
    python src/ingestion/fetch_all.py
+   
+   # Process collected data
+   python -m src.processing.processor_manager
+   # Or run the full test suite
+   python test_processing_pipeline.py
+   
+   # Start the web interface (coming in Phase 7)
+   streamlit run src/frontend/app.py
    ```
 
 ## 🔧 Development Phases
@@ -97,15 +102,19 @@ ai_events_aggregator/
 - [ ] Document expected outputs
 
 ### 🔍 Phase 2: Data Ingestion
-- [ ] Eventbrite API integration
-- [ ] Meetup API integration
-- [ ] Luma scraping (via Apify)
-- [ ] Partiful scraping (via Apify)
+- [x] Eventbrite API integration
+- [x] Meetup API integration
+- [x] Luma scraping (Playwright-based)
+- [x] Partiful scraping (template ready)
+- [x] Collector manager and orchestration
 
-### 🧹 Phase 3: Data Processing
-- [ ] Data normalization and cleaning
-- [ ] Deduplication logic
-- [ ] Standardized output format
+### ✅ Phase 3: Data Processing
+- [x] Data normalization and cleaning
+- [x] Cross-source deduplication logic
+- [x] Data enrichment (tags, categories, tech-relevance)
+- [x] Event validation and quality scoring
+- [x] Standardized unified schema
+- [x] Processing pipeline manager
 
 ### 🤖 Phase 4: AI Classification
 - [ ] Keyword-based filtering

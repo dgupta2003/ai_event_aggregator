@@ -58,3 +58,14 @@ Thumbs.db
 # API keys and secrets
 secrets.json
 config.json
+
+# Test outputs and temporary files
+llm_test_results_*.json
+events_export_*.csv
+events_export_*.xlsx
+test_*.py
+debug_*.py
+inspect_*.py
+*.html
+*.png
+*.pdf

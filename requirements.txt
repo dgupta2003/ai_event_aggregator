@@ -1,3 +1,4 @@
+# Core dependencies
 annotated-types==0.7.0
 anyio==4.11.0
 beautifulsoup4==4.14.2
@@ -11,7 +12,6 @@ httpx==0.28.1
 idna==3.10
 jiter==0.11.0
 numpy==2.3.3
-openai==2.2.0
 pandas==2.3.3
 playwright==1.55.0
 psycopg2-binary==2.9.10
@@ -31,3 +31,12 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.5.0
+
+# LLM APIs (for multi-LLM integration)
+openai>=1.0.0  # GPT-4, GPT-3.5
+anthropic>=0.25.0  # Claude 3.5
+google-generativeai>=0.3.0  # Gemini
+groq>=0.4.0  # Fast Llama inference
+
+# Excel export
+openpyxl>=3.1.0
