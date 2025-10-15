@@ -1,0 +1,125 @@
+(async () => {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+
+  // 1) Try to accept cookie/consent banners that block the DOM
+  try {
+    const cookieBtnSelectors = [
+      'button[id*="accept"]',
+      'button[aria-label*="Accept"]',
+      'button:contains("Accept")', // will be ignored in querySelectorAll, handled below
+      '[data-testid*="gdpr"] button'
+    ];
+    let clicked = false;
+    for (const sel of cookieBtnSelectors) {
+      const btns = Array.from(document.querySelectorAll(sel)).filter(b => /accept/i.test(b.textContent));
+      if (btns.length) { btns[0].click(); clicked = true; break; }
+    }
+    if (!clicked) {
+      // heuristic: any visible button with "Accept" text
+      const anyBtn = Array.from(document.querySelectorAll('button')).find(b => /accept/i.test(b.textContent));
+      if (anyBtn) anyBtn.click();
+    }
+  } catch(e) {}
+
+  // 2) Auto-scroll to load all results
+  let lastH = 0, sameCount = 0;
+  for (let i = 0; i < 60; i++) {               // up to ~60 scroll steps (~40s max)
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(700);
+    const h = document.body.scrollHeight;
+    if (h === lastH) {
+      sameCount++;
+      if (sameCount >= 3) break;              // no more new content for ~2s
+    } else {
+      sameCount = 0;
+      lastH = h;
+    }
+  }
+  // small settle delay
+  await sleep(800);
+
+  // 3) Collect event cards (broad selectors, desktop & mobile)
+  const cardRoots = Array.from(document.querySelectorAll([
+    '[data-testid="search-event-card"]',
+    '[data-spec*="event-card"]',
+    'article[data-automation*="event-card"]',
+    'li[data-automation*="event-card"]',
+    'div[class*="event-card"]',
+    'a[href*="/e/"]' // fallback
+  ].join(',')));
+
+  // Deduplicate by closest anchor href
+  const seen = new Set();
+  const cards = [];
+  for (const root of cardRoots) {
+    const a = root.closest('a[href*="/e/"]') || root.querySelector('a[href*="/e/"]');
+    if (!a) continue;
+    const href = new URL(a.href, location.href).href.split('?')[0];
+    if (seen.has(href)) continue;
+    seen.add(href);
+    cards.push({root, a, href});
+  }
+
+  // Extract fields with multiple fallbacks
+  const rows = cards.map(({root, a, href}) => {
+    const titleEl = root.querySelector('[data-testid="event-card-name"], [data-spec*="formatted-name"], h2, h3, [class*="title"]') || a;
+    const dateEl  = root.querySelector('time, [data-testid*="date"], [data-spec*="date"], [class*="date"]');
+    const locEl   = root.querySelector('[data-testid*="location"], [data-spec*="location"], [class*="location"]');
+    const priceEl = root.querySelector('[data-testid*="price"], [data-spec*="price"], [class*="price"]');
+
+    // time element may have machine-readable attribute
+    const dateText = dateEl?.getAttribute?.('datetime') || txt(dateEl);
+
+    // Try microdata/LD+JSON inside the card if present
+    let ldTitle = '', ldLoc = '', ldStart = '';
+    try {
+      const ld = root.querySelector('script[type="application/ld+json"]');
+      if (ld) {
+        const j = JSON.parse(ld.textContent);
+        ldTitle = j?.name || '';
+        ldLoc = j?.location?.name || '';
+        ldStart = j?.startDate || '';
+      }
+    } catch(e){}
+
+    return {
+      Title: txt(titleEl) || ldTitle || a.getAttribute('aria-label') || a.title || a.textContent.trim(),
+      Date: dateText || ldStart,
+      Location: txt(locEl) || ldLoc || '',
+      Price: txt(priceEl) || '',
+      Link: href
+    };
+  }).filter(r => r.Title);
+
+  if (!rows.length) {
+    console.warn('Still no events found. Two quick tips: (1) make sure you are on the results list, not an individual event page; (2) scroll to the bottom once, then re-run.');
+    return;
+  }
+
+  // Print Markdown table
+  const headers = ['#','Title','Date','Location','Price','Link'];
+  const md = [
+    `| ${headers.join(' | ')} |`,
+    `| ${headers.map(()=>'---').join(' | ')} |`,
+    ...rows.map((r,i)=>`| ${i+1} | ${r.Title} | ${r.Date} | ${r.Location} | ${r.Price} | ${r.Link} |`)
+  ].join('\n');
+  console.log(md);
+
+  // Build & copy CSV
+  const esc = s => `"${String(s??'').replace(/"/g,'""')}"`;
+  const csv = [
+    ['Index','Title','Date','Location','Price','Link'].join(','),
+    ...rows.map((r,i)=>[i+1,r.Title,r.Date,r.Location,r.Price,r.Link].map(esc).join(','))
+  ].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(csv);
+    console.log('CSV copied to clipboard)');
+  } catch {
+    console.log('Clipboard unavailable. CSV below:\n' + csv);
+  }
+
+  // Also show a quick summary count
+  console.log(`\nExtracted ${rows.length} events.`);
+})();
