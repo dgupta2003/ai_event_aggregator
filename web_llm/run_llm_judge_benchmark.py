@@ -184,8 +184,8 @@ def print_final_summary(results: Dict[str, Any]):
 
 if __name__ == '__main__':
     # Paths
-    benchmark_json = '/Users/shreyasbachiraju/uni/circle_capstone/web_llm/ollama_benchmark_20251015_173200.json'
-    output_json = '/Users/shreyasbachiraju/uni/circle_capstone/web_llm/llm_judge_evaluation.json'
+    benchmark_json = '/Users/shreyasbachiraju/uni/circle_capstone/ollama_benchmark_20251030_015843.json'
+    output_json = '/Users/shreyasbachiraju/uni/circle_capstone/ollama_benchmark_20251030_015843_llm_judge.json'
     
     # Initialize LLM judge
     print("Initializing Gemini Judge...")

@@ -198,7 +198,7 @@ class GeminiJudge:
         """Build the evaluation prompt for the LLM"""
         return f"""Evaluate this search result's relevance to the query.
 
-TODAY'S DATE: October 26, 2025
+TODAY'S DATE: October 30, 2025
 
 QUERY:
 {query}
@@ -584,7 +584,7 @@ if __name__ == '__main__':
     print(f"✓ Temperature: 0.2 (for reproducibility)\n")
     
     # Path to Ollama benchmark results (use the latest one)
-    benchmark_json = '/Users/shreyasbachiraju/uni/circle_capstone/web_llm/ollama_benchmark_20251026_223136.json'
+    benchmark_json = '/Users/shreyasbachiraju/uni/circle_capstone/ollama_benchmark_20251030_035130.json'
     
     # Run LLM judge evaluation on all benchmark results
     print("🚀 Starting LLM Judge evaluation on Ollama benchmark results...")

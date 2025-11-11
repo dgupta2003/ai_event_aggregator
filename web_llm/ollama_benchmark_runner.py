@@ -602,7 +602,7 @@ def run_benchmark(md_path: str, max_results: int = 10) -> Dict[str, Any]:
 
         t0 = time.time()
         try:
-            resp = client.web_search(qtext)
+            resp = client.web_search(qtext, max_results=max_results)
             raw_results = resp.get('results', [])
         except Exception as e:
             print(f"    ERROR: {type(e).__name__}: {str(e)}")
@@ -725,15 +725,15 @@ def save_markdown(metrics: List[QueryMetrics], summary: Dict[str, Any], path: st
             lines.append(f"- Freshness: {m.freshness*100:.1f}%\n")
         if m.platforms_present:
             lines.append(f"- Platforms: {', '.join(f'{k}:{v}' for k, v in m.platforms_present.items())}\n")
-        # Top 3 relevant previews
-        rel = [e for e in m.result_evals if e.confidence >= 0.6]
-        rel = sorted(rel, key=lambda x: x.confidence, reverse=True)[:3]
-        if rel:
-            lines.append("- Top Relevant Results:")
-            for e in rel:
-                lines.append(f"  - [{e.title}]({e.url}) — conf {e.confidence}, matched {e.matched}")
+        # All results sorted by confidence
+        all_results = sorted(m.result_evals, key=lambda x: x.confidence, reverse=True)
+        if all_results:
+            lines.append("- All Results:")
+            for e in all_results:
+                relevance_marker = "✓" if e.confidence >= 0.6 else "✗"
+                lines.append(f"  - {relevance_marker} [{e.title}]({e.url}) — conf {e.confidence}, matched {e.matched}")
         else:
-            lines.append("- Top Relevant Results: None")
+            lines.append("- All Results: None")
 
     with open(path, 'w', encoding='utf-8') as f:
         f.write("\n".join(lines))
