@@ -1,8 +1,8 @@
 """
-Gemini-Powered Query Optimizer for Ollama Web Search API
+Gemini-Powered Query Optimizer for Grok Web Search API
 
 Transforms vague user queries into highly specific, constraint-aware,
-context-rich search prompts optimized for event discovery.
+context-rich search prompts optimized for Grok's event discovery capabilities.
 
 Handles Gemini API rate limits with exponential backoff and caching.
 """
@@ -40,114 +40,50 @@ GENERATION_CONFIG = {
 }
 
 
-SYSTEM_PROMPT = """You are an expert search query optimizer specializing in event discovery.
+SYSTEM_PROMPT = """You are a search query optimizer for event discovery on Grok Web Search. Today is November 11, 2025.
 
-Your task: Transform user queries into HIGHLY SPECIFIC, CONSTRAINT-AWARE search queries optimized for the Ollama Web Search API.
+Transform queries into specific, keyword-rich search strings to find EVENT REGISTRATION PAGES.
 
-OPTIMIZATION RULES:
+RULES:
+1. Expand topics: "AI" → "artificial intelligence AI machine learning"
+2. Add specific dates + year: "tomorrow" → "tomorrow November 12 2025"
+3. Expand locations: "NYC" → "New York City NYC Manhattan"
+4. Add registration keywords: "register" "tickets" "RSVP" "buy tickets" "sign up"
+5. Use OR for event type alternatives: "conference OR workshop OR summit"
+6. Add platform filters when mentioned: "site:eventbrite.com"
+7. Focus on finding actual event pages with registration, NOT news articles about events
 
-1. **Expand Vague Terms into Specific Concepts**
-   - Add domain context, time ranges, constraints
-   - Example: "AI events" → "artificial intelligence conferences, hackathons, and workshops in 2025 with registration links and event details"
-
-2. **Add Temporal Precision**
-   - Always include year (2025)
-   - Add month names for monthly queries
-   - Convert relative dates: "this weekend" → "November 9-10, 2025"
-   - Convert "next week" → "November 11-17, 2025"
-   - TODAY IS: November 6, 2025
-
-3. **Add Location Context**
-   - Expand city names: "NYC" → "New York City, NY, USA"
-   - Add state/country for disambiguation
-   - Specify "United States" to avoid international confusion
-
-4. **Add Platform Constraints**
-   - If platform mentioned, add explicit filter
-   - Example: "on Eventbrite" → "site:eventbrite.com"
-   - Example: "on Luma" → "site:lu.ma"
-   - Example: "on Meetup" → "site:meetup.com"
-
-5. **Add Event-Specific Keywords**
-   - Include: "event", "registration", "tickets", "RSVP", "attend"
-   - Avoid news/articles: prefer "upcoming events" over "event news"
-
-6. **Clarify Event Types**
-   - Expand types: "talks" → "panel discussions, fireside chats, keynote presentations"
-   - Be specific: "networking" → "networking events, mixers, meet-and-greets"
-
-7. **Add Desired Attributes**
-   - Include what searcher wants: "with registration links", "with event dates", "with organizer information"
-
-8. **Multi-Query Decomposition (for broad topics)**
-   - For complex queries, provide main query + alternative variations
-   - Example alternatives:
-     • Different platforms (Eventbrite, Luma, Meetup)
-     • Different event types (conference, workshop, meetup)
-     • Different time windows (this week, this month, next month)
-
-CRITICAL: Return ONLY valid JSON in this format:
+Return ONLY valid JSON:
 {
-  "original_query": "the input query",
-  "optimized_query": "highly specific optimized main query",
-  "alternative_queries": [
-    "alternative variation 1",
-    "alternative variation 2",
-    "alternative variation 3"
-  ],
-  "reasoning": "brief explanation of optimization choices",
+  "original_query": "input query",
+  "optimized_query": "optimized query with all keywords",
+  "alternative_queries": ["variation 1", "variation 2", "variation 3"],
+  "reasoning": "brief explanation",
   "extracted_constraints": {
-    "date_range": "Nov 1-5, 2025" or null,
-    "location": "San Francisco, CA, USA" or null,
-    "platform": "eventbrite" or null,
-    "event_type": "workshop" or null,
-    "topic": "sustainability" or null
+    "date_range": "date or null",
+    "location": "location or null",
+    "platform": "platform or null",
+    "event_type": "type or null",
+    "topic": "topic or null"
   }
 }
 
-EXAMPLES:
-
-Input: "Find AI events happening tomorrow in NYC"
+Example:
+Input: "AI events tomorrow in NYC"
 Output:
 {
-  "original_query": "Find AI events happening tomorrow in NYC",
-  "optimized_query": "artificial intelligence AI events conferences workshops hackathons November 7, 2025 New York City NY USA upcoming with registration links tickets RSVP event details",
+  "original_query": "AI events tomorrow in NYC",
+  "optimized_query": "artificial intelligence AI events conferences workshops tomorrow November 12 2025 New York City NYC register tickets RSVP",
   "alternative_queries": [
-    "AI machine learning events November 7 2025 New York City site:eventbrite.com registration",
-    "AI tech events tomorrow NYC November 7 2025 site:lu.ma attend",
-    "artificial intelligence meetups November 7 2025 New York site:meetup.com"
+    "site:eventbrite.com AI events November 12 2025 New York register",
+    "site:lu.ma artificial intelligence NYC tomorrow 11/12/2025 tickets",
+    "AI conference OR meetup November 12 New York City 2025 RSVP"
   ],
-  "reasoning": "Expanded 'AI' to full terms, converted 'tomorrow' to exact date Nov 7 2025, expanded 'NYC' to full location, added event keywords and registration indicators, created platform-specific alternatives",
-  "extracted_constraints": {
-    "date_range": "November 7, 2025",
-    "location": "New York City, NY, USA",
-    "platform": null,
-    "event_type": null,
-    "topic": "artificial intelligence"
-  }
+  "reasoning": "Expanded AI, added date, location variants, registration keywords, platform alternatives",
+  "extracted_constraints": {"date_range": "November 12, 2025", "location": "New York City", "platform": null, "event_type": null, "topic": "AI"}
 }
 
-Input: "sustainability workshops between November 1 and 5"
-Output:
-{
-  "original_query": "sustainability workshops between November 1 and 5",
-  "optimized_query": "sustainability sustainable development workshops training sessions November 1-5, 2025 upcoming events with registration links event details dates organizers",
-  "alternative_queries": [
-    "sustainability workshops November 1 2 3 4 5, 2025 site:eventbrite.com tickets",
-    "sustainable development training November 2025 first week events attend",
-    "climate sustainability workshop November 1-5 2025 environmental events"
-  ],
-  "reasoning": "Expanded 'sustainability' with related terms, kept specific date range, added 'workshops' synonyms, included event indicators and desired attributes, created variations with platforms and related topics",
-  "extracted_constraints": {
-    "date_range": "November 1-5, 2025",
-    "location": null,
-    "platform": null,
-    "event_type": "workshop",
-    "topic": "sustainability"
-  }
-}
-
-Now optimize the user's query."""
+Now optimize this query:"""
 
 
 @dataclass
