@@ -8,7 +8,7 @@ import os
 import csv
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 
 def load_latest_data():
@@ -35,10 +35,10 @@ def load_latest_data():
     return events
 
 def get_test_queries():
-    """Define the 20 test queries from TEST_QUERIES (1).md"""
+    """Define the 20 test queries from updated benchmark test queries"""
     queries = {
-        1: "Is there any AI event happening on October 19 at 9 AM in New York City?",
-        2: "Find all sustainability workshops scheduled in San Francisco between October 18 and 22.",
+        1: "Is there any AI event happening on November 12 at 9 AM in New York City?",
+        2: "Find all sustainability workshops scheduled in San Francisco between November 1 and 5.",
         3: "Are there any climate change awareness events this weekend in Chicago?",
         4: "Show technology or entrepreneurship meetups happening tomorrow in Austin.",
         5: "List upcoming art and creativity festivals in Los Angeles next week.",
@@ -49,7 +49,7 @@ def get_test_queries():
         10: "Find music or cultural festivals related to sustainability and social change.",
         11: "Find AI or robotics events listed on Eventbrite for this week.",
         12: "Are there community events on Luma about ethical AI or digital privacy?",
-        13: "Search for World Health Organization (WHO) webinars scheduled for October.",
+        13: "Search for World Health Organization (WHO) webinars scheduled for November.",
         14: "List United Nations sustainability summits or youth events this year.",
         15: "Find TEDx or startup-focused talks in Europe about innovation and inclusion.",
         16: "List virtual AI conferences available for free registration this weekend.",
@@ -59,6 +59,159 @@ def get_test_queries():
         20: "Find product demo days or tech expos scheduled for November 2025."
     }
     return queries
+
+def normalize_location(location_str):
+    """Normalize location strings for better matching"""
+    if not location_str:
+        return ""
+    
+    location_lower = location_str.lower()
+    
+    # Normalize common location aliases
+    location_map = {
+        'nyc': 'new york',
+        'new york city': 'new york',
+        'sf': 'san francisco',
+        'la': 'los angeles',
+        'chi': 'chicago'
+    }
+    
+    for alias, normalized in location_map.items():
+        if alias in location_lower:
+            return normalized
+    return location_lower
+
+def is_discovery_page(url):
+    """Check if URL is a discovery/search page rather than specific event"""
+    if not url:
+        return True
+    
+    url_lower = url.lower()
+    discovery_patterns = [
+        'discover', 'find', '/search', 'listing', 'directory',
+        'meetup.com/find/', 'eventbrite.com/d/', '/events'
+    ]
+    
+    return any(pattern in url_lower for pattern in discovery_patterns)
+
+def parse_event_date(event):
+    """Extract and parse date from event data"""
+    # Try date field first
+    date_str = event.get('date', '').strip()
+    title = event.get('title', '').lower()
+    
+    # Try to extract date from title or date field
+    # Patterns: "Sat, Oct 25", "November 12", "Nov 12", "Oct 25"
+    date_patterns = [
+        r'(?:mon|tue|wed|thu|fri|sat|sun)[,\s]+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[,\s]+(\d{1,2})',
+        r'(january|february|march|april|may|june|july|august|september|october|november|december)[,\s]+(\d{1,2})',
+        r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[,\s]+(\d{1,2})',
+        r'(\d{1,2})[,\s]+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+    ]
+    
+    month_map = {
+        'jan': 1, 'january': 1, 'feb': 2, 'february': 2,
+        'mar': 3, 'march': 3, 'apr': 4, 'april': 4,
+        'may': 5, 'jun': 6, 'june': 6,
+        'jul': 7, 'july': 7, 'aug': 8, 'august': 8,
+        'sep': 9, 'september': 9, 'oct': 10, 'october': 10,
+        'nov': 11, 'november': 11, 'dec': 12, 'december': 12
+    }
+    
+    search_text = f"{date_str} {title}"
+    
+    for pattern in date_patterns:
+        match = re.search(pattern, search_text, re.IGNORECASE)
+        if match:
+            groups = match.groups()
+            if len(groups) >= 2:
+                month_str = groups[0].lower()
+                day_str = groups[1]
+                
+                month = month_map.get(month_str)
+                if month:
+                    try:
+                        day = int(day_str)
+                        # Assume 2025 for now (could be improved)
+                        return datetime(2025, month, day)
+                    except ValueError:
+                        continue
+    
+    return None
+
+def date_matches_query(query_num, query_text, event_date):
+    """Check if event date matches query requirements"""
+    if not event_date:
+        return True  # If we can't parse date, don't filter out
+    
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+    
+    query_lower = query_text.lower()
+    
+    # Query 1: November 12
+    if query_num == 1:
+        return event_date.month == 11 and event_date.day == 12
+    
+    # Query 2: November 1-5
+    if query_num == 2:
+        return event_date.month == 11 and 1 <= event_date.day <= 5
+    
+    # Query 3: "this weekend" - calculate weekend dates
+    if query_num == 3:
+        # Find this Saturday
+        days_until_saturday = (5 - now.weekday()) % 7
+        if days_until_saturday == 0 and now.weekday() < 5:
+            days_until_saturday = 7
+        saturday = now + timedelta(days=days_until_saturday)
+        sunday = saturday + timedelta(days=1)
+        return saturday.date() <= event_date.date() <= sunday.date()
+    
+    # Query 4: "tomorrow"
+    if query_num == 4:
+        tomorrow = now + timedelta(days=1)
+        return event_date.date() == tomorrow.date()
+    
+    # Query 5: "next week"
+    if query_num == 5:
+        next_week_start = now + timedelta(days=(7 - now.weekday()))
+        next_week_end = next_week_start + timedelta(days=6)
+        return next_week_start.date() <= event_date.date() <= next_week_end.date()
+    
+    # Query 7: November 2025
+    if query_num == 7:
+        return event_date.month == 11 and event_date.year == 2025
+    
+    # Query 8, 17: "this month"
+    if query_num in [8, 17]:
+        return event_date.month == current_month and event_date.year == current_year
+    
+    # Query 9, 11: "this week"
+    if query_num in [9, 11]:
+        week_start = now - timedelta(days=now.weekday())
+        week_end = week_start + timedelta(days=6)
+        return week_start.date() <= event_date.date() <= week_end.date()
+    
+    # Query 13: November
+    if query_num == 13:
+        return event_date.month == 11
+    
+    # Query 16: "this weekend"
+    if query_num == 16:
+        days_until_saturday = (5 - now.weekday()) % 7
+        if days_until_saturday == 0 and now.weekday() < 5:
+            days_until_saturday = 7
+        saturday = now + timedelta(days=days_until_saturday)
+        sunday = saturday + timedelta(days=1)
+        return saturday.date() <= event_date.date() <= sunday.date()
+    
+    # Query 20: November 2025
+    if query_num == 20:
+        return event_date.month == 11 and event_date.year == 2025
+    
+    # Default: don't filter by date for queries without date requirements
+    return True
 
 def find_events_for_query(query_num, query_text, events):
     """Find events that match a specific query"""
@@ -115,55 +268,97 @@ def find_events_for_query(query_num, query_text, events):
         platform = event.get('platform', '').lower()
         categories = event.get('categories', '').lower()
         location = event.get('location', '').lower()
+        event_url = event.get('url', '')
+        
+        # PRIORITY 4: Filter discovery pages early
+        if is_discovery_page(event_url):
+            # Only include if we have substantial event data
+            if len(title) < 15 or title in ['discover events', 'popular events', 'eventsgroups']:
+                continue
+        
+        # PRIORITY 1: Check date matching (penalize but don't completely skip)
+        event_date = parse_event_date(event)
+        date_matches = date_matches_query(query_num, query_text, event_date)
+        
+        # Only skip if we successfully parsed a date AND it doesn't match
+        # (don't skip if we couldn't parse date - might still be relevant)
+        if event_date and not date_matches:
+            continue  # Skip events with parsed dates that don't match
         
         match_score = 0
         match_reasons = []
+        topic_match = False
+        location_match = False
         
-        # Check topic matches
-        for topic in topics:
-            if topic in title or topic in categories:
-                match_score += 2
-                match_reasons.append(f"topic:{topic}")
+        # PRIORITY 2: Stricter topic matching (higher weight, but allow partial matches)
+        if topics:  # If query specifies topics
+            topic_match = any(
+                topic in title or topic in categories 
+                for topic in topics
+            )
+            if topic_match:
+                matched_topics = [t for t in topics if t in title or t in categories]
+                match_score += 4 * len(matched_topics)  # Higher weight for topic match
+                match_reasons.extend([f"topic:{t}" for t in matched_topics])
+            else:
+                # Don't completely skip - just give lower score
+                # But for very specific queries, require topic match
+                if query_num in [1, 3, 6, 8, 10, 12]:  # Highly topic-specific queries
+                    continue  # Require topic match for these
+                match_score -= 2  # Penalty for topic mismatch
         
-        # Check location matches
-        for loc in locations:
-            if loc in title or loc in location or loc in categories:
-                match_score += 2
-                match_reasons.append(f"location:{loc}")
+        # PRIORITY 3: Location matching with normalization (REQUIRED for location queries)
+        if locations:  # If query specifies locations
+            normalized_event_location = normalize_location(location)
+            normalized_title_location = normalize_location(title)
+            
+            location_match = any(
+                normalize_location(loc) in normalized_event_location or
+                normalize_location(loc) in normalized_title_location or
+                normalize_location(loc) in normalize_location(categories)
+                for loc in locations
+            )
+            
+            if not location_match:
+                # For strict location queries, location match is strongly preferred
+                if query_num in [1, 2, 5]:  # Very location-specific (NYC, SF, LA)
+                    match_score -= 3  # Heavy penalty but don't skip
+                else:
+                    match_score -= 1  # Light penalty
+            
+            if location_match:
+                matched_locations = [
+                    loc for loc in locations 
+                    if normalize_location(loc) in normalized_event_location or
+                    normalize_location(loc) in normalized_title_location or
+                    normalize_location(loc) in normalize_location(categories)
+                ]
+                match_score += 3 * len(matched_locations)  # Higher weight for location
+                match_reasons.extend([f"location:{l}" for l in matched_locations])
         
-        # Check platform matches
+        # Check platform matches (still important)
         for platform_keyword in platforms:
             if platform_keyword in platform:
-                match_score += 3
+                match_score += 4  # Higher weight for platform match
                 match_reasons.append(f"platform:{platform_keyword}")
         
-        # Check format matches
+        # Check format matches (still important)
         for format_type in formats:
             if format_type in title:
                 match_score += 2
                 match_reasons.append(f"format:{format_type}")
         
-        # Check specific query patterns
-        if query_num == 1 and ("ai" in title or "artificial intelligence" in title) and ("october" in title or "19" in title):
-            match_score += 3
-            match_reasons.append("specific:ai_oct19")
+        # Negative filters - exclude obviously wrong matches
+        # Exclude "women in tech" when query asks for "climate change"
+        if query_num == 3 and ("women" in title or "tech" in title) and "climate" not in title:
+            continue
         
-        if query_num == 2 and ("sustainability" in title or "workshop" in title) and ("san francisco" in title or "sf" in title):
-            match_score += 3
-            match_reasons.append("specific:sustainability_workshop_sf")
+        # Exclude non-AI events when query asks for AI
+        if query_num in [1, 6, 11, 12, 16] and topics and any("ai" in t or "artificial intelligence" in t for t in topics):
+            if "ai" not in title and "artificial intelligence" not in title and "robotics" not in title:
+                continue
         
-        if query_num == 11 and "eventbrite" in platform and ("ai" in title or "robotics" in title):
-            match_score += 3
-            match_reasons.append("specific:eventbrite_ai")
-        
-        if query_num == 12 and "luma" in platform and ("ai" in title or "privacy" in title):
-            match_score += 3
-            match_reasons.append("specific:luma_ai_privacy")
-        
-        if query_num == 16 and ("virtual" in title or "conference" in title) and ("ai" in title):
-            match_score += 3
-            match_reasons.append("specific:virtual_ai_conference")
-        
+        # Add events with positive match score (after penalties)
         if match_score > 0:
             event_copy = event.copy()
             event_copy['match_score'] = match_score
@@ -219,11 +414,11 @@ def create_query_results_csv(events):
                     # Get URL and clean it up
                     event_url = event.get('url', '')
                     
-                    # For discovery pages, show the platform instead
-                    if 'discover' in event_url:
-                        platform = event.get('platform', '').replace('_', ' ').title()
-                        event_url = f"[{platform} Discovery Page]"
-                    elif event_url:
+                    # PRIORITY 4: Filter discovery pages - skip them entirely
+                    if is_discovery_page(event_url):
+                        continue  # Skip discovery pages in output
+                    
+                    if event_url:
                         # Truncate long URLs
                         if len(event_url) > 50:
                             event_url = event_url[:47] + "..."

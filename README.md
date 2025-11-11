@@ -10,6 +10,7 @@ This project demonstrates how to use Firecrawl API to scrape event data from pla
 
 - **Multi-Platform Scraping**: Luma, Eventbrite, Meetup across multiple cities
 - **Query-Based Organization**: Results organized by 20 test queries from TEST_QUERIES.md
+- **LLM Result Judgment**: Automatically evaluates result relevance using Google's Gemini AI
 - **Clean Data Export**: CSV outputs with bullet-pointed results
 - **Real Event Data**: 757+ events collected with titles, dates, and links
 
@@ -41,6 +42,9 @@ python improved_firecrawl_scraper.py
 # Organize results by queries
 python create_query_results.py
 
+# Judge results with LLM (requires GOOGLE_API_KEY)
+python llm_judge.py
+
 # View results
 python show_results.py
 ```
@@ -51,6 +55,8 @@ python show_results.py
 firecrawl-events-scraper/
 ├── improved_firecrawl_scraper.py    # Main scraping script
 ├── create_query_results.py           # Query organization script
+├── llm_judge.py                     # LLM-based result judge 🆕
+├── unify_api_metrics.py             # API comparison metrics
 ├── show_results.py                  # Results display script
 ├── firecrawl_collector.py           # Firecrawl collector class
 ├── base_collector.py                # Base collector utilities
@@ -63,7 +69,9 @@ firecrawl-events-scraper/
 └── docs/
     ├── FIRECRAWL_SETUP.md           # Setup guide
     ├── FIRECRAWL_BENCHMARK_RESULTS.md
-    └── FIRECRAWL_SEARCH_SUMMARY.md
+    ├── FIRECRAWL_SEARCH_SUMMARY.md
+    ├── LLM_JUDGE_USAGE.md           # LLM Judge guide 🆕
+    └── GOOGLE_API_SETUP.md          # Google API setup guide 🆕
 ```
 
 ## 📈 Output Files
@@ -72,9 +80,13 @@ firecrawl-events-scraper/
 - `firecrawl_categorized_events_*.csv` - Main event data with categories
 - `firecrawl_platforms_*.csv` - Platform performance metrics
 - `query_results_*.csv` - Results organized by 20 test queries
+- `llm_judgments_*.csv` - LLM relevance judgments for results 🆕
+- `api_comparison_metrics_*.csv` - API performance comparison 🆕
+- `unified_api_data_*.csv` - Unified dataset from all APIs 🆕
 
 ### JSON Files
 - `firecrawl_improved_results_*.json` - Complete results with metadata
+- `llm_judgments_*.json` - Detailed LLM judgment data 🆕
 
 ## 🎯 Query Categories
 
@@ -136,3 +148,7 @@ This project was developed as part of a capstone project to demonstrate:
 ## 📞 Contact
 
 Developed for capstone project demonstration of Firecrawl API capabilities in event data collection and organization.
+
+
+
+
