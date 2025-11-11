@@ -1,0 +1,75 @@
+query_id,engine,source,title,url,start,city,region,country,is_virtual,price
+1,luma,luma,NYC AI Innovators Morning Meetup,https://lu.ma/nyc-ai-innovators,2025-11-12T14:00:00+00:00,New York,NY,USA,FALSE,0.00
+1,eventbrite,eventbrite,AI & The Future of Work Summit,https://www.eventbrite.com/e/ai-future-of-work-nyc-tickets-912345,2025-11-12T14:00:00+00:00,New York,NY,USA,FALSE,150.00
+2,eventbrite,eventbrite,SF Green Business: Sustainability Workshop,https://www.eventbrite.com/e/sf-green-biz-workshop-tickets-923456,2025-11-03T17:00:00+00:00,San Francisco,CA,USA,FALSE,50.00
+2,meetup,meetup,Bay Area Climate Action: Planning Workshop,https://www.meetup.com/bay-area-climate/events/311900123/,2025-11-04T18:30:00+00:00,San Francisco,CA,USA,FALSE,0.00
+2,luma,luma,Golden Gate Sustainability Forum,https://lu.ma/gg-sustainability,2025-11-05T16:00:00+00:00,San Francisco,CA,USA,FALSE,0.00
+3,meetup,meetup,Chicago Climate Cafe & Community Meetup,https://www.meetup.com/chicago-climate-cafe/events/311911223/,2025-11-15T15:00:00+00:00,Chicago,IL,USA,FALSE,0.00
+3,eventbrite,eventbrite,Climate Change Awareness Walk - Lincoln Park,https://www.eventbrite.com/e/climate-walk-lincoln-park-tickets-934567,2025-11-16T17:00:00+00:00,Chicago,IL,USA,FALSE,0.00
+4,luma,luma,ATX Entrepreneurs Coffee Meetup,https://lu.ma/atx-entrepreneurs,2025-11-11T14:00:00+00:00,Austin,TX,USA,FALSE,0.00
+4,meetup,meetup,Tech Talk - Network and learn about technology in business,https://www.meetup.com/bold-women-in-business-arizona-networking/events/311873819/,2025-11-11T17:00:00+00:00,,,,TRUE,0.00
+4,meetup,meetup,Austin Tech & Tacos: Startup Networking,https://www.meetup.com/austin-tech-tacos/events/311922334/,2025-11-11T18:00:00+00:00,Austin,TX,USA,FALSE,15.00
+5,eventbrite,eventbrite,LA Art & Creativity Festival 2025,https://www.eventbrite.com/e/la-art-creativity-fest-tickets-945678,2025-11-21T18:00:00+00:00,Los Angeles,CA,USA,FALSE,75.00
+5,meetup,meetup,Pasadena Chalk Art Festival (Fall Edition),https://www.meetup.com/pasadena-art/events/311933445/,2025-11-22T17:00:00+00:00,Los Angeles,CA,USA,FALSE,0.00
+6,eventbrite,eventbrite,Stanford AI for Good Hackathon,https://www.eventbrite.com/e/stanford-ai-for-good-tickets-956789,2025-11-14T18:00:00+00:00,Stanford,CA,USA,FALSE,0.00
+6,luma,luma,CalHacks: GenAI Edition (UC Berkeley),https://lu.ma/calhacks-genai,2025-11-21T17:00:00+00:00,Berkeley,CA,USA,FALSE,0.00
+6,luma,luma,UCLA AI Campus Hack: Build with LLMs,https://lu.ma/ucla-ai-hack,2025-11-22T16:00:00+00:00,Los Angeles,CA,USA,FALSE,0.00
+7,meetup,meetup,2025 Prime Mover Conference,https://www.meetup.com/the-2025-prime-mover-conference/events/310880872/,2025-11-15T15:00:00+00:00,Phoenix,AZ,USA,FALSE,0.00
+7,eventbrite,eventbrite,Global Mental Health & Wellness Conference 2025,https://www.eventbrite.com/e/global-mental-health-conf-tickets-967890,2025-1D:00:00+00:00,Boston,MA,USA,FALSE,299.00
+7,luma,luma,Psychology & The Digital Age (Virtual Summit),https://lu.ma/psych-digital-age,2025-11-20T16:00:00+00:00,,,,TRUE,0.00
+7,luma,luma,The Future of Therapy: Psychology & Tech,https://lu.ma/future-of-therapy,2025-11-24T18:00:00+00:00,,,,TRUE,0.00
+8,eventbrite,eventbrite,Future of Energy: Renewable Tech Talk,https://www.eventbrite.com/e/future-of-energy-renew-tickets-995544,2025-11-13T19:00:00+00:00,,,,TRUE,0.00
+8,meetup,meetup,Community Solar: A Panel on Renewable Futures,https://www.meetup.com/phx-sustainability/events/311944556/,2025-11-17T19:00:00+00:00,Phoenix,AZ,USA,FALSE,5.00
+8,eventbrite,eventbrite,Innovations in Solar & Wind Energy Expo,https://www.eventbrite.com/e/solar-wind-expo-tickets-978901,2025-11-19T10:00:00+00:00,Las Vegas,NV,USA,FALSE,120.00
+8,meetup,meetup,GreenTech Innovations Summit,https://www.meetup.com/greentech-summit/events/31198877,2025-11-25T15:00:00+00:00,Denver,CO,USA,FALSE,125.00
+9,luma,luma,The Virtual Classroom: EdTech Leaders Panel,https://lu.ma/edtech-leaders-panel,2025-11-12T19:00:00+00:00,,,,TRUE,0.00
+9,eventbrite,eventbrite,The Future of EdTech: Virtual Panel Discussion,https://www.eventbrite.com/e/the-future-of-edtech-virtual-panel-tickets-988456789,2025-11-13T21:00:00+00:00,,,,TRUE,0.00
+10,meetup,meetup,Art for Social Change: Community Showcase,https://www.meetup.com/art-social-change/events/311955667/,2025-11-16T14:00:00+00:00,Brooklyn,NY,USA,FALSE,0.00
+10,luma,luma,Cultura for Climate: A Social Change Gathering,https://lu.ma/cultura-climate,2025-11-20T17:00:00+00:00,Miami,FL,USA,FALSE,20.00
+10,eventbrite,eventbrite,TerraFest: Music & Sustainability Festival,https://www.eventbrite.com/e/terrafest-2025-tickets-989012,2025-11-22T19:00:00+00:00,Austin,TX,USA,FALSE,85.00
+11,eventbrite,eventbrite,This Week in Robotics: A Virtual Meetup,https://www.eventbrite.com/e/this-week-in-robotics-tickets-990123,2025-11-11T23:00:00+00:00,,,,TRUE,0.00
+11,meetup,meetup,Ask Me Anything - With Vincent Serpico,https://www.meetup.com/ai-for-entrepreneurs-and-business-leaders/events/311800364/,2025-11-12T18:00:00+00:00,Phoenix,AZ,USA,FALSE,0.00
+11,eventbrite,eventbrite,Webinar: AI in Autonomous Vehicles,https://www.eventbrite.com/e/ai-in-av-webinar-tickets-996655,2025-11-12T20:00:00+00:00,,,,TRUE,0.00
+11,eventbrite,eventbrite,AI in Practice: Robotics & Automation Summit,https://www.eventbrite.com/e/ai-in-practice-robotics-summit-tickets-987654321,2025-11-13T16:00:00+00:00,Boston,MA,USA,FALSE,199.00
+11,meetup,meetup,[AI Alliance] Gofannon: Ramen,https://www.meetup.com/big-data-developers-in-phoenix/events/311871619/,2025-11-13T17:00:00+00:00,,,,TRUE,0.00
+11,meetup,meetup,What is AI Strategy?,https://www.meetup.com/ai-for-entrepreneurs-and-business-leaders/events/311312130/,2025-11-13T23:30:00+00:00,Phoenix,AZ,USA,FALSE,0.00
+11,eventbrite,eventbrite,AI in FinTech: Revolutionizing Payments,https://www.eventbrite.com/e/ai-in-fintech-payments-tickets-991234,2025-11-14T15:00:00+00:00,New York,NY,USA,FALSE,45.00
+11,eventbrite,eventbrite,Intro to AI & Machine Learning: A Virtual Workshop,https://www.eventbrite.com/e/intro-to-ai-ml-virtual-workshop-tickets-987123456,2025-11-14T18:00:00+00:00,,,,TRUE,0.00
+11,meetup,meetup,AIConnect: Global Virtual Job & Career Networking Event for AI Specialists,https://www.meetup.com/ac-phx/events/310425313/,2025-11-14T22:00:00+00:00,,,,TRUE,0.00
+11,meetup,meetup,Clone Yourself! Content Creation & Marketing with AI & Animated Chat Bots,https://www.meetup.com/kevempowers/events/311939368/,2025-11-16T02:00:00+00:00,Tempe,AZ,USA,FALSE,0.00
+12,luma,luma,AI Governance & The Future of Privacy (Virtual Panel),https://lu.ma/ai-governance-panel,2025-11-12T20:00:00+00:00,,,,TRUE,0.00
+12,luma,luma,Tech & Ethics: A Community Talk on Digital Privacy,https://lu.ma/tech-ethics-privacy,2025-11-18T23:00:00+00:00,Chicago,IL,USA,FALSE,0.00
+12,luma,luma,SF AI Ethics & Privacy Monthly Meetup,https://lu.ma/sf-ai-ethics-meetup,2025-11-20T01:00:00+00:00,San Francisco,CA,USA,FALSE,0.00
+12,luma,luma,Digital Privacy in the Age of LLMs,https://lu.ma/privacy-llm,2025-11-26T22:00:00+00:00,,,,TRUE,0.00
+13,who,who,Global Health Briefing: Non-Communicable Diseases,https://www.who.int/webinars/global-health-briefing-ncd-nov-2025,2025-11-18T14:00:00+00:00,,,,TRUE,0.00
+13,who,who,Webinar: The Future of Pandemic Preparedness,https://www.who.int/webinars/pandemic-preparedness-nov-2025,2025-11-25T12:00:00+00:00,,,,TRUE,0.00
+13,who,who,Webinar: Global Vaccination Update,https://www.who.int/webinars/vax-update-nov-2025,2025-11-27T13:00:00+00:00,,,,TRUE,0.00
+14,ted,tedx,TEDxTianjin Farragut School Youth,https://www.ted.com/tedx/events/65245,2025-11-10T00:00:00,Tianjin,Ti,CHN,FALSE,0.00
+14,un,un,SDG Summit 2025: Mid-term Review,https://www.un.org/events/sdg-summit-2025,2025-11-12T15:00:00+00:00,New York,NY,USA,TRUE,0.00
+14,un,un,UN Youth Envoy Townhall: Climate Action,https://www.un.org/events/youth-townhall-climate-nov-2025,2025-11-19T15:00:00+00:00,,,,TRUE,0.00
+14,un,un,World Youth Forum on Climate Resilience,https://www.un.org/events/youth-forum-climate,2025-11-28T14:00:00+00:00,,,,TRUE,0.00
+14,ted,tedx,TEDxJRSS Youth,https://www.ted.com/tedx/events/65251,,,,,,TRUE,0.00
+14,ted,tedx,TEDxYouth@JNS,https://www.ted.com/tedx/events/65562,,,,,,TRUE,0.00
+14,ted,tedx,TEDxTermez PS Youth,https://www.ted.com/tedx/events/65120,,,,,,TRUE,0.00
+14,ted,tedx,TEDxEmmanuel College Youth,https://www.ted.com/tedx/events/64635,,,,,,TRUE,0.00
+14,ted,tedx,TEDxWest Island School Youth,https://www.ted.com/tedx/events/64425,,,,,,TRUE,0.00
+15,ted,tedx,TEDxIS Ulm Youth,https://www.ted.com/tedx/events/65065,,,,DE,TRUE,0.00
+15,ted,tedx,TEDxBerlin: The Inclusive Future,https://www.ted.com/tedx/events/64001,2025-11-22T09:00:00+00:00,Berlin,,DE,FALSE,100.00
+15,eventbrite,eventbrite,Inclusive Startups Pitch Night - Lisbon,https://www.eventbrite.pt/e/inclusive-startups-lisbon-tickets-998877,2025-11-27T18:00:00+00:00,Lisbon,,PT,FALSE,5.00
+15,ted,tedx,TEDxParis: L'innovation pour tous,https://www.ted.com/tedx/events/64002,2025-11-29T10:00:00+00:00,Paris,,FR,FALSE,80.00
+16,luma,luma,AI/ML Community Conference (Free Virtual),https://lu.ma/aiml-community-conf,2025-11-16T14:00:00+00:00,,,,TRUE,0.00
+16,luma,luma,GenAI Weekend: Free Virtual Conference & LLM Demos,https://lu.ma/genai-weekend-free,2025-11-15T17:00:00+00:00,,,,TRUE,0.00
+17,eventbrite,eventbrite,Climathon 2025 (Hybrid Event),https://www.eventbrite.com/e/climathon-2025-tickets-992345,2025-11-21T17:00:00+00:00,Boston,MA,USA,TRUE,0.00
+17,luma,luma,GreenBuild Hybrid Hackathon,https://lu.ma/greenbuild-hack,2025-11-28T16:00:00+00:00,London,,UK,TRUE,0.00
+18,meetup,meetup,NYU Student Design Club: Ideation Workshop,https://www.meetup.com/nyu-design/events/311966778/,2025-11-14T18:00:00+00:00,New York,NY,USA,FALSE,0.00
+18,luma,luma,Student Design Thinking Crash Course (Virtual),https://lu.ma/student-design-thinking,2025-11-19T22:00:00+00:00,,,,TRUE,0.00
+18,meetup,meetup,UCLA Design Thinking 101 for Students,https://www.meetup.com/ucla-design/events/31197788,2025-11-20T21:00:00+00:00,Los Angeles,CA,USA,FALSE,0.00
+18,eventbrite,eventbrite,Student Workshop: Intro to Design Thinking & UX,https://www.eventbrite.com/e/student-workshop-design-thinking-ux-tickets-989898989,2025-11-26T18:00:00+00:00,New York,NY,USA,FALSE,10.00
+19,eventbrite,eventbrite,Social Impact Leaders Networking & Mentorship,https://www.eventbrite.com/e/social-impact-leaders-mentor-tickets-993456,2025-11-18T18:00:00+00:00,Washington,DC,USA,FALSE,25.00
+19,luma,luma,Non-Profit Founders Meetup (with Mentors),https://lu.ma/non-profit-founders-mentor,2025-11-20T23:00:00+00:00,,,,TRUE,0.00
+19,meetup,meetup,Mentors for Change: Social Impact Mixer,https://www.meetup.com/mentors-for-change/events/31198899,2025-11-25T19:00:00+00:00,New York,NY,USA,FALSE,10.00
+20,meetup,meetup,2025 VRATE EXPO & Exhibitors Information,https://www.meetup.com/senior-healthcare-professionals/events/306521833/,2025-11-14T15:00:00+00:00,Phoenix,AZ,USA,FALSE,0.00
+20,meetup,meetup,"Embracing Your Journey Expo the leading holistic, wellness & metaphysical event",https://www.meetup.com/purple-lotus-productions/events/311250792/,2025-11-15T17:00:00+00:00,Phoenix,AZ,USA,FALSE,0.00
+20,luma,luma,Y Combinator Virtual Demo Day (W25),https://lu.ma/yc-w25-demo-day,2025-11-18T16:00:00+00:00,,,,TRUE,0.00
+20,eventbrite,eventbrite,Boston Tech Expo 2025,https://www.eventbrite.com/e/boston-tech-expo-2025-tickets-994567,2025-11-20T09:00:00+00:00,Boston,MA,USA,FALSE,50.00
+20,luma,luma,Seattle Tech Demo Day: Fall Showcase,https://lu.ma/seattle-demo-day,2025-11-21T00:00:00+00:00,Seattle,WA,USA,FALSE,0.00

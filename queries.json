@@ -1,0 +1,335 @@
+{
+  "queries": [
+    {
+      "id": 1,
+      "text": "Is there any AI event happening on November 12 at 9 AM in New York City?",
+      "filters": {
+        "topic": [
+          "ai",
+          "artificial intelligence",
+          "genai",
+          "llm"
+        ],
+        "date_exact": "2025-11-12",
+        "time_exact": "09:00",
+        "location_city": "New York",
+        "location_region": "NY",
+        "format": null
+      }
+    },
+    {
+      "id": 2,
+      "text": "Find all sustainability workshops scheduled in San Francisco between November 1 and 5.",
+      "filters": {
+        "topic": [
+          "sustainability",
+          "climate",
+          "environment"
+        ],
+        "date_from": "2025-11-01",
+        "date_to": "2025-11-05",
+        "location_city": "San Francisco",
+        "location_region": "CA",
+        "type": [
+          "workshop"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "text": "Are there any climate change awareness events this weekend in Chicago?",
+      "filters": {
+        "topic": [
+          "climate",
+          "sustainability"
+        ],
+        "relative_window": "weekend",
+        "location_city": "Chicago",
+        "location_region": "IL"
+      }
+    },
+    {
+      "id": 4,
+      "text": "Show technology or entrepreneurship meetups happening tomorrow in Austin.",
+      "filters": {
+        "topic": [
+          "technology",
+          "entrepreneurship",
+          "startup"
+        ],
+        "relative_window": "tomorrow",
+        "location_city": "Austin",
+        "location_region": "TX",
+        "platform": [
+          "meetup"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "text": "List upcoming art and creativity festivals in Los Angeles next week.",
+      "filters": {
+        "topic": [
+          "art",
+          "creativity"
+        ],
+        "type": [
+          "festival"
+        ],
+        "relative_window": "next_week",
+        "location_city": "Los Angeles",
+        "location_region": "CA"
+      }
+    },
+    {
+      "id": 6,
+      "text": "Find generative AI hackathons hosted by universities in California.",
+      "filters": {
+        "topic": [
+          "genai",
+          "ai",
+          "llm"
+        ],
+        "type": [
+          "hackathon"
+        ],
+        "host_keywords": [
+          "university",
+          "college",
+          "campus"
+        ],
+        "location_region": "CA"
+      }
+    },
+    {
+      "id": 7,
+      "text": "Are there any mental health conferences taking place in November 2025?",
+      "filters": {
+        "topic": [
+          "mental health",
+          "psychology",
+          "wellness"
+        ],
+        "date_from": "2025-11-01",
+        "date_to": "2025-11-30",
+        "type": [
+          "conference"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "text": "List events focused on renewable energy innovations this month.",
+      "filters": {
+        "topic": [
+          "renewable",
+          "solar",
+          "wind",
+          "energy",
+          "sustainability"
+        ],
+        "relative_window": "this_month"
+      }
+    },
+    {
+      "id": 9,
+      "text": "Search for education and EdTech panels happening online this week.",
+      "filters": {
+        "topic": [
+          "education",
+          "edtech"
+        ],
+        "type": [
+          "panel"
+        ],
+        "format": [
+          "virtual"
+        ],
+        "relative_window": "this_week"
+      }
+    },
+    {
+      "id": 10,
+      "text": "Find music or cultural festivals related to sustainability and social change.",
+      "filters": {
+        "topic": [
+          "sustainability",
+          "social change",
+          "culture",
+          "music"
+        ],
+        "type": [
+          "festival"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "text": "Find AI or robotics events listed on Eventbrite for this week.",
+      "filters": {
+        "topic": [
+          "ai",
+          "robotics"
+        ],
+        "platform": [
+          "eventbrite"
+        ],
+        "relative_window": "this_week"
+      }
+    },
+    {
+      "id": 12,
+      "text": "Are there community events on Luma about ethical AI or digital privacy?",
+      "filters": {
+        "topic": [
+          "ethical ai",
+          "digital privacy"
+        ],
+        "platform": [
+          "luma"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "text": "Search for World Health Organization webinars scheduled for November.",
+      "filters": {
+        "topic": [
+          "health",
+          "global health"
+        ],
+        "platform": [
+          "who"
+        ],
+        "type": [
+          "webinar"
+        ],
+        "date_from": "2025-11-01",
+        "date_to": "2025-11-30"
+      }
+    },
+    {
+      "id": 14,
+      "text": "List United Nations sustainability summits or youth events this year.",
+      "filters": {
+        "topic": [
+          "sustainability",
+          "sdg",
+          "climate",
+          "youth"
+        ],
+        "platform": [
+          "un"
+        ],
+        "type": [
+          "summit",
+          "youth"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "text": "Find TEDx or startup-focused talks in Europe about innovation and inclusion.",
+      "filters": {
+        "topic": [
+          "innovation",
+          "inclusion"
+        ],
+        "platform": [
+          "ted",
+          "tedx"
+        ],
+        "region_hint": [
+          "europe"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "text": "List virtual AI conferences available for free registration this weekend.",
+      "filters": {
+        "topic": [
+          "ai",
+          "llm"
+        ],
+        "format": [
+          "virtual"
+        ],
+        "type": [
+          "conference"
+        ],
+        "price": [
+          "free"
+        ],
+        "relative_window": "weekend"
+      }
+    },
+    {
+      "id": 17,
+      "text": "Are there hybrid sustainability hackathons happening this month?",
+      "filters": {
+        "topic": [
+          "sustainability",
+          "climate"
+        ],
+        "type": [
+          "hackathon"
+        ],
+        "format": [
+          "hybrid"
+        ],
+        "relative_window": "this_month"
+      }
+    },
+    {
+      "id": 18,
+      "text": "Find upcoming design thinking workshops open to students.",
+      "filters": {
+        "topic": [
+          "design thinking",
+          "ux"
+        ],
+        "type": [
+          "workshop"
+        ],
+        "audience": [
+          "student",
+          "students",
+          "undergrad"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "text": "Show social impact networking events that include mentorship sessions.",
+      "filters": {
+        "topic": [
+          "social impact",
+          "nonprofit",
+          "esg"
+        ],
+        "features": [
+          "mentorship",
+          "mentor"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "text": "Find product demo days or tech expos scheduled for November 2025.",
+      "filters": {
+        "topic": [
+          "product",
+          "startup",
+          "tech"
+        ],
+        "type": [
+          "demo day",
+          "expo"
+        ],
+        "date_from": "2025-11-01",
+        "date_to": "2025-11-30"
+      }
+    }
+  ]
+}
