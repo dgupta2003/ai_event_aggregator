@@ -1,0 +1,8 @@
+{
+  "name": "Circle Events",
+  "description": "A premium, futuristic event platform for discovering and hosting hybrid events with AI-powered voice interactions.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
