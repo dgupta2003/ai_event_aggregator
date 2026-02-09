@@ -57,3 +57,7 @@ scraping/data/
 data/
 downloads/
 output/
+web/node_modules/
+web/node_modules/
+app/mobile/node_modules/
+node_modules/
