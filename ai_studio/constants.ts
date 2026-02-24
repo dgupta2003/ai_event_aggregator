@@ -25,7 +25,7 @@ export const SPONSORS: Sponsor[] = [
     logoUrl: 'https://picsum.photos/id/88/100/100',
     tier: 'Gold',
     website: 'https://example.com',
-    perks: ['Free Samples'],
+    perks: ['Free Samples', 'Branded Bar'],
   },
   {
     id: 's3',
@@ -33,7 +33,31 @@ export const SPONSORS: Sponsor[] = [
     logoUrl: 'https://picsum.photos/id/106/100/100',
     tier: 'Silver',
     website: 'https://example.com',
-    perks: [],
+    perks: ['Booth Space'],
+  },
+  {
+    id: 's4',
+    name: 'GreenEat',
+    logoUrl: 'https://picsum.photos/id/292/100/100',
+    tier: 'Silver',
+    website: 'https://example.com',
+    perks: ['Catering', 'Sustainability Badge'],
+  },
+  {
+    id: 's5',
+    name: 'SoundWave',
+    logoUrl: 'https://picsum.photos/id/145/100/100',
+    tier: 'Gold',
+    website: 'https://example.com',
+    perks: ['Audio Equipment', 'DJ Booth'],
+  },
+  {
+    id: 's6',
+    name: 'Urban Threads',
+    logoUrl: 'https://picsum.photos/id/177/100/100',
+    tier: 'Platinum',
+    website: 'https://example.com',
+    perks: ['Merch Stand', 'Fashion Show Segment'],
   }
 ];
 
