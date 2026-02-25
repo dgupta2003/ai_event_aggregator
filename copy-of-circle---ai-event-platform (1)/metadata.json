@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Circle - AI Event Platform",
+  "description": "A premium, dark-theme event hosting and discovery platform featuring AI voice assistance, immersive venue maps, and sponsor integrations.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
