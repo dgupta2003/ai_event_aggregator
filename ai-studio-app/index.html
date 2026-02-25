@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventflow | AI-Powered Event Platform</title>
+    <meta name="description" content="Discover, host, and attend events with AI assistance.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-part2.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='url(%23g)'/><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ec4899'/><stop offset='100%25' style='stop-color:%23a855f7'/></linearGradient></defs></svg>">
+</head>
+
+<body>
+    <div class="notification-bar" id="notificationBar">
+        <div class="notification-content">
+            <span class="notification-icon">💬</span>
+            <span class="notification-text">Eventflow is here if you need anything</span>
+        </div>
+        <button class="notification-toggle" id="notificationToggle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+    </div>
+
+    <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav class="side-nav" id="sideNav">
+        <div class="nav-header">
+            <div class="logo">
+                <div class="logo-orb"></div><span>Eventflow</span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" class="nav-link active" data-page="home"><span class="nav-icon">🏠</span>Home</a></li>
+            <li><a href="#" class="nav-link" data-page="discover"><span class="nav-icon">🔍</span>Discover</a></li>
+            <li><a href="#" class="nav-link" data-page="host"><span class="nav-icon">✨</span>Host Event</a></li>
+            <li><a href="#" class="nav-link" data-page="sponsorships"><span class="nav-icon">💼</span>Sponsorships</a></li>
+            <li><a href="#" class="nav-link" data-page="my-events"><span class="nav-icon">📅</span>My Events</a></li>
+            <li><a href="#" class="nav-link" data-page="profile"><span class="nav-icon">👤</span>Profile</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content" id="mainContent"></main>
+
+    <div class="control-bar" id="controlBar">
+        <button class="control-btn voice-btn" id="voiceBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+            </svg>
+        </button>
+        <button class="control-btn chat-btn" id="chatBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div class="modal" id="chatModal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content chat-modal-content">
+            <h3>Send a Message</h3>
+            <input type="text" id="chatInput" placeholder="Ask about events...">
+            <div class="chat-actions">
+                <button class="chat-cancel" id="cancelChat">Cancel</button>
+                <button class="chat-send" id="sendChat">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="eventModal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content event-modal-content" id="eventModalBody"></div>
+    </div>
+
+    <div class="voice-overlay hidden" id="voiceOverlay">
+        <div class="voice-overlay-content">
+            <div class="listening-orb">
+                <div class="listening-waves"><span></span><span></span><span></span></div>
+            </div>
+            <p class="listening-text">Listening...</p>
+            <p class="voice-transcript" id="voiceTranscript"></p>
+            <button class="stop-listening-btn" id="stopListening">Tap to stop</button>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <script src="app.js"></script>
+    <script src="app-part2.js"></script>
+</body>
+
+</html>
