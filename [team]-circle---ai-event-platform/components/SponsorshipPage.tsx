@@ -77,7 +77,7 @@ export const SponsorshipPage = ({
   onUpdateSettings?: (settings: EventSponsorshipSettings) => void
 }) => {
   const navigate = useNavigate();
-  const { addProposal, user } = useEvents();
+  const { createProposal, user } = useEvents();
   
   // Host State
   const [hostSettings, setHostSettings] = useState<EventSponsorshipSettings>(
@@ -100,6 +100,11 @@ export const SponsorshipPage = ({
   const [negotiateMessage, setNegotiateMessage] = useState('');
 
   const handleNegotiate = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     const selectedItemsList = selection.selected_item_ids.map(id => {
       const item = SPONSORSHIP_MENU.find(i => i.id === id);
       if (!item) return '';
@@ -229,17 +234,20 @@ Best regards,
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Audience Type</label>
-                <select 
-                  value={hostSettings.audience_type}
-                  onChange={(e) => setHostSettings(s => ({ ...s, audience_type: e.target.value as AudienceType }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="general_public">General Public</option>
-                  <option value="students_earlycareer">Students / Early Career</option>
-                  <option value="professionals">Professionals</option>
-                  <option value="founders_operators">Founders / Operators</option>
-                  <option value="executives_investors">Executives / Investors</option>
-                </select>
+                <div className="relative">
+                  <select 
+                    value={hostSettings.audience_type}
+                    onChange={(e) => setHostSettings(s => ({ ...s, audience_type: e.target.value as AudienceType }))}
+                    className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option className="bg-gray-900 text-white" value="general_public">General Public</option>
+                    <option className="bg-gray-900 text-white" value="students_earlycareer">Students / Early Career</option>
+                    <option className="bg-gray-900 text-white" value="professionals">Professionals</option>
+                    <option className="bg-gray-900 text-white" value="founders_operators">Founders / Operators</option>
+                    <option className="bg-gray-900 text-white" value="executives_investors">Executives / Investors</option>
+                  </select>
+                  <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
@@ -541,23 +549,22 @@ Best regards,
                   Cancel
                 </button>
                 <button 
-                  onClick={() => {
-                    const proposal: SponsorshipProposal = {
-                      id: Math.random().toString(36).substr(2, 9),
-                      eventId: event.id,
-                      eventTitle: event.title,
-                      senderId: user.id,
-                      senderName: user.name,
-                      receiverId: event.hostId,
-                      message: negotiateMessage,
-                      status: 'pending',
-                      timestamp: Date.now(),
-                      estimatedInvestment: cartTotal
-                    };
-                    addProposal(proposal);
-                    alert('Sponsorship proposal sent! The host will be in touch soon.');
-                    setShowNegotiateComposer(false);
-                    setSelection({ selected_item_ids: [], exclusivity_selected_item_ids: [] });
+                  onClick={async () => {
+                    try {
+                      await createProposal({
+                        eventId: event.id,
+                        eventTitle: event.title,
+                        receiverId: event.hostId,
+                        message: negotiateMessage,
+                        estimatedInvestment: cartTotal,
+                        proposalType: 'sponsorship'
+                      });
+                      alert('Sponsorship proposal sent! The host will be in touch soon.');
+                      setShowNegotiateComposer(false);
+                      setSelection({ selected_item_ids: [], exclusivity_selected_item_ids: [] });
+                    } catch (error: any) {
+                      alert(error?.message || 'Failed to send proposal. Please try again.');
+                    }
                   }}
                   className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
                 >

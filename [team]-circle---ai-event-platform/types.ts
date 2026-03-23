@@ -67,9 +67,36 @@ export interface SponsorshipProposal {
   senderName: string;
   receiverId: string;
   message: string;
+  proposalType: 'sponsorship' | 'partnership';
   status: 'pending' | 'accepted' | 'declined';
   timestamp: number;
   estimatedInvestment: number;
+}
+
+export interface SponsorProfile {
+  userId: string;
+  companyName: string;
+  website?: string;
+  bio?: string;
+  industries: string[];
+  budgetMin: number;
+  budgetMax: number;
+  preferredFormats: EventFormat[];
+  preferredGeographies: string[];
+  preferredAudienceTypes: AudienceType[];
+}
+
+export interface SponsorDirectoryItem extends SponsorProfile {
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  matchScore?: number;
+  matchReason?: string;
+}
+
+export interface SponsorEventMatch extends Event {
+  matchScore: number;
+  matchReason: string;
 }
 
 export interface User {

@@ -218,6 +218,7 @@ export const EVENTS: Event[] = [
     capacity: 20000,
     tags: ['MMA', 'Sports', 'Live'],
     isFeatured: true,
+    visibility: 'public',
   },
   {
     id: 'e2',
@@ -235,6 +236,7 @@ export const EVENTS: Event[] = [
     attendees: 1200,
     capacity: 2000,
     tags: ['AI', 'Tech', 'Networking'],
+    visibility: 'public',
   },
   {
     id: 'e3',
@@ -251,6 +253,7 @@ export const EVENTS: Event[] = [
     attendees: 300,
     capacity: 500,
     tags: ['Art', 'Culture'],
+    visibility: 'public',
   },
   {
     id: 'e4',
@@ -267,6 +270,7 @@ export const EVENTS: Event[] = [
     attendees: 5000,
     capacity: 10000,
     tags: ['Code', 'Web3', 'Cloud'],
+    visibility: 'public',
   },
   {
     id: 'e5',
@@ -284,5 +288,6 @@ export const EVENTS: Event[] = [
     attendees: 8000,
     capacity: 16000,
     tags: ['MMA', 'Championship'],
+    visibility: 'public',
   },
 ];

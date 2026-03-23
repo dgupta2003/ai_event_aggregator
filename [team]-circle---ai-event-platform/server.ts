@@ -83,7 +83,6 @@ db.exec(`
     capacity INTEGER NOT NULL,
     tags TEXT,
     isFeatured INTEGER DEFAULT 0,
-    isFeatured INTEGER DEFAULT 0,
     sponsorshipSettings TEXT,
     visibility TEXT DEFAULT 'public',
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -120,6 +119,102 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sponsor_profiles (
+    userId TEXT PRIMARY KEY,
+    companyName TEXT NOT NULL,
+    website TEXT,
+    bio TEXT,
+    industries TEXT DEFAULT '[]',
+    budgetMin REAL DEFAULT 0,
+    budgetMax REAL DEFAULT 0,
+    preferredFormats TEXT DEFAULT '[]',
+    preferredGeographies TEXT DEFAULT '[]',
+    preferredAudienceTypes TEXT DEFAULT '[]',
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sponsorship_proposals (
+    id TEXT PRIMARY KEY,
+    eventId TEXT NOT NULL,
+    eventTitle TEXT NOT NULL,
+    senderId TEXT NOT NULL,
+    senderName TEXT NOT NULL,
+    receiverId TEXT NOT NULL,
+    message TEXT NOT NULL,
+    proposalType TEXT NOT NULL DEFAULT 'sponsorship',
+    status TEXT NOT NULL DEFAULT 'pending',
+    timestamp INTEGER NOT NULL,
+    estimatedInvestment REAL NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+const proposalTableInfo = db.prepare("PRAGMA table_info(sponsorship_proposals)").all() as any[];
+const proposalColumns = proposalTableInfo.map((c: any) => c.name);
+if (!proposalColumns.includes('proposalType')) {
+  try {
+    db.exec(`ALTER TABLE sponsorship_proposals ADD COLUMN proposalType TEXT NOT NULL DEFAULT 'sponsorship'`);
+  } catch (err) {
+    console.error('Failed to add proposalType column:', err);
+  }
+}
+
+const safeParseJsonArray = (value: any): string[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const computeSponsorEventMatch = (event: any, sponsorProfile: any) => {
+  const industries = safeParseJsonArray(sponsorProfile.industries).map((i) => i.toLowerCase());
+  const preferredFormats = safeParseJsonArray(sponsorProfile.preferredFormats).map((f) => f.toLowerCase());
+  const preferredGeographies = safeParseJsonArray(sponsorProfile.preferredGeographies).map((g) => g.toLowerCase());
+  const preferredAudienceTypes = safeParseJsonArray(sponsorProfile.preferredAudienceTypes).map((a) => a.toLowerCase());
+
+  const reasons: string[] = [];
+  let score = 45;
+
+  if (industries.includes(String(event.category || '').toLowerCase())) {
+    score += 25;
+    reasons.push(`Strong industry fit (${event.category})`);
+  }
+
+  if (preferredFormats.includes(String(event.format || '').toLowerCase())) {
+    score += 15;
+    reasons.push(`Preferred format (${event.format})`);
+  }
+
+  const location = String(event.location || '').toLowerCase();
+  if (preferredGeographies.some((geo) => geo && location.includes(geo))) {
+    score += 10;
+    reasons.push('Location aligns with target geography');
+  }
+
+  const audienceType = String(event.sponsorshipSettings?.audience_type || '').toLowerCase();
+  if (audienceType && preferredAudienceTypes.includes(audienceType)) {
+    score += 10;
+    reasons.push('Audience profile match');
+  }
+
+  if (!reasons.length) {
+    reasons.push('General sponsorship compatibility');
+  }
+
+  return {
+    score: Math.max(0, Math.min(100, score)),
+    reason: reasons.join(' • ')
+  };
+};
+
 // Seed Database
 const userCount = db.prepare("SELECT count(*) as count FROM users").get() as any;
 if (userCount.count === 0) {
@@ -143,7 +238,6 @@ if (userCount.count === 0) {
 const eventCount = db.prepare("SELECT count(*) as count FROM events").get() as any;
 if (eventCount.count === 0) {
   const stmt = db.prepare(`
-    INSERT INTO events (
     INSERT INTO events (
       id, title, description, date, time, location, venueName, format, 
       imageUrl, price, category, hostId, sponsorId, attendees, capacity, 
@@ -175,6 +269,118 @@ if (eventCount.count === 0) {
       JSON.stringify(event.sponsorshipSettings || null)
     );
   }
+}
+
+const seededSponsors = [
+  {
+    user: {
+      id: 'sp1',
+      name: 'Maya Chen',
+      email: 'maya@techflow.com',
+      avatarUrl: 'https://picsum.photos/seed/sponsor1/200'
+    },
+    profile: {
+      companyName: 'TechFlow Ventures',
+      website: 'https://example.com/techflow',
+      bio: 'Early-stage technology investor and growth partner focused on AI, developer tools, and community-led products.',
+      industries: ['Tech', 'AI', 'Developer Tools'],
+      budgetMin: 2000,
+      budgetMax: 25000,
+      preferredFormats: ['Online', 'Hybrid'],
+      preferredGeographies: ['san francisco', 'new york', 'online'],
+      preferredAudienceTypes: ['professionals', 'founders_operators']
+    }
+  },
+  {
+    user: {
+      id: 'sp2',
+      name: 'Jordan Blake',
+      email: 'jordan@nebulaenergy.com',
+      avatarUrl: 'https://picsum.photos/seed/sponsor2/200'
+    },
+    profile: {
+      companyName: 'Nebula Energy',
+      website: 'https://example.com/nebula',
+      bio: 'Lifestyle and sports beverage brand partnering with high-attendance events and experiential activations.',
+      industries: ['Sports', 'Lifestyle', 'Consumer'],
+      budgetMin: 1500,
+      budgetMax: 12000,
+      preferredFormats: ['In-Person', 'Hybrid'],
+      preferredGeographies: ['las vegas', 'los angeles', 'miami'],
+      preferredAudienceTypes: ['general_public', 'students_earlycareer']
+    }
+  },
+  {
+    user: {
+      id: 'sp3',
+      name: 'Priya Nair',
+      email: 'priya@artspark.media',
+      avatarUrl: 'https://picsum.photos/seed/sponsor3/200'
+    },
+    profile: {
+      companyName: 'ArtSpark Media',
+      website: 'https://example.com/artspark',
+      bio: 'Creative media collective supporting arts, culture, and community storytelling events.',
+      industries: ['Art', 'Culture', 'Media'],
+      budgetMin: 800,
+      budgetMax: 9000,
+      preferredFormats: ['In-Person', 'Online'],
+      preferredGeographies: ['new york', 'chicago', 'remote'],
+      preferredAudienceTypes: ['general_public', 'professionals']
+    }
+  }
+];
+
+const sponsorUserInsertStmt = db.prepare(`
+  INSERT OR IGNORE INTO users (
+    id, name, email, password_hash, avatarUrl, savedEventIds, attendedEventIds, hostedEventIds, onboardingCompleted
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+const sponsorProfileUpsertStmt = db.prepare(`
+  INSERT INTO sponsor_profiles (
+    userId, companyName, website, bio, industries, budgetMin, budgetMax,
+    preferredFormats, preferredGeographies, preferredAudienceTypes, createdAt, updatedAt
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  ON CONFLICT(userId) DO UPDATE SET
+    companyName = excluded.companyName,
+    website = excluded.website,
+    bio = excluded.bio,
+    industries = excluded.industries,
+    budgetMin = excluded.budgetMin,
+    budgetMax = excluded.budgetMax,
+    preferredFormats = excluded.preferredFormats,
+    preferredGeographies = excluded.preferredGeographies,
+    preferredAudienceTypes = excluded.preferredAudienceTypes,
+    updatedAt = CURRENT_TIMESTAMP
+`);
+
+for (const sponsor of seededSponsors) {
+  const sponsorPasswordHash = bcrypt.hashSync('password123', 10);
+  sponsorUserInsertStmt.run(
+    sponsor.user.id,
+    sponsor.user.name,
+    sponsor.user.email,
+    sponsorPasswordHash,
+    sponsor.user.avatarUrl,
+    JSON.stringify([]),
+    JSON.stringify([]),
+    JSON.stringify([]),
+    1
+  );
+
+  sponsorProfileUpsertStmt.run(
+    sponsor.user.id,
+    sponsor.profile.companyName,
+    sponsor.profile.website,
+    sponsor.profile.bio,
+    JSON.stringify(sponsor.profile.industries),
+    sponsor.profile.budgetMin,
+    sponsor.profile.budgetMax,
+    JSON.stringify(sponsor.profile.preferredFormats),
+    JSON.stringify(sponsor.profile.preferredGeographies),
+    JSON.stringify(sponsor.profile.preferredAudienceTypes)
+  );
 }
 
 async function startServer() {
@@ -419,6 +625,274 @@ async function startServer() {
     const avatarUrl = `/uploads/${req.file.filename}`;
     db.prepare("UPDATE users SET avatarUrl = ? WHERE id = ?").run(avatarUrl, req.userId);
     res.json({ avatarUrl });
+  });
+
+  // Sponsor Routes
+  app.get("/api/sponsors", optionalAuthenticate, (req: any, res) => {
+    try {
+      const eventId = req.query.eventId as string | undefined;
+
+      const sponsors = db.prepare(`
+        SELECT u.id as userId, u.name, u.email, u.avatarUrl,
+               sp.companyName, sp.website, sp.bio, sp.industries, sp.budgetMin, sp.budgetMax,
+               sp.preferredFormats, sp.preferredGeographies, sp.preferredAudienceTypes
+        FROM sponsor_profiles sp
+        JOIN users u ON u.id = sp.userId
+        ORDER BY sp.updatedAt DESC
+      `).all() as any[];
+
+      let parsedSponsors = sponsors.map((s) => ({
+        ...s,
+        industries: safeParseJsonArray(s.industries),
+        preferredFormats: safeParseJsonArray(s.preferredFormats),
+        preferredGeographies: safeParseJsonArray(s.preferredGeographies),
+        preferredAudienceTypes: safeParseJsonArray(s.preferredAudienceTypes)
+      }));
+
+      if (eventId) {
+        const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId) as any;
+        if (!event) return res.status(404).json({ error: "Event not found" });
+
+        const parsedEvent = {
+          ...event,
+          sponsorshipSettings: event.sponsorshipSettings ? JSON.parse(event.sponsorshipSettings) : undefined
+        };
+
+        parsedSponsors = parsedSponsors
+          .map((s) => {
+            const match = computeSponsorEventMatch(parsedEvent, s);
+            return {
+              ...s,
+              matchScore: match.score,
+              matchReason: match.reason
+            };
+          })
+          .sort((a, b) => b.matchScore - a.matchScore);
+      }
+
+      res.json(parsedSponsors);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/sponsors/me", authenticate, (req: any, res) => {
+    try {
+      const sponsorProfile = db.prepare("SELECT * FROM sponsor_profiles WHERE userId = ?").get(req.userId) as any;
+      if (!sponsorProfile) return res.status(404).json({ error: "Sponsor profile not found" });
+
+      res.json({
+        ...sponsorProfile,
+        industries: safeParseJsonArray(sponsorProfile.industries),
+        preferredFormats: safeParseJsonArray(sponsorProfile.preferredFormats),
+        preferredGeographies: safeParseJsonArray(sponsorProfile.preferredGeographies),
+        preferredAudienceTypes: safeParseJsonArray(sponsorProfile.preferredAudienceTypes)
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/sponsors/signup", authenticate, (req: any, res) => {
+    const schema = z.object({
+      companyName: z.string().min(2),
+      website: z.string().url().optional().or(z.literal('')),
+      bio: z.string().max(800).optional().or(z.literal('')),
+      industries: z.array(z.string()).min(1),
+      budgetMin: z.number().min(0),
+      budgetMax: z.number().min(0),
+      preferredFormats: z.array(z.enum(['Online', 'In-Person', 'Hybrid'])).optional().default([]),
+      preferredGeographies: z.array(z.string()).optional().default([]),
+      preferredAudienceTypes: z.array(z.enum(['general_public', 'students_earlycareer', 'professionals', 'founders_operators', 'executives_investors'])).optional().default([])
+    }).refine((data) => data.budgetMax >= data.budgetMin, {
+      message: 'budgetMax must be greater than or equal to budgetMin',
+      path: ['budgetMax']
+    });
+
+    try {
+      const data = schema.parse(req.body);
+
+      db.prepare(`
+        INSERT INTO sponsor_profiles (
+          userId, companyName, website, bio, industries, budgetMin, budgetMax,
+          preferredFormats, preferredGeographies, preferredAudienceTypes, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(userId) DO UPDATE SET
+          companyName = excluded.companyName,
+          website = excluded.website,
+          bio = excluded.bio,
+          industries = excluded.industries,
+          budgetMin = excluded.budgetMin,
+          budgetMax = excluded.budgetMax,
+          preferredFormats = excluded.preferredFormats,
+          preferredGeographies = excluded.preferredGeographies,
+          preferredAudienceTypes = excluded.preferredAudienceTypes,
+          updatedAt = CURRENT_TIMESTAMP
+      `).run(
+        req.userId,
+        data.companyName,
+        data.website || null,
+        data.bio || null,
+        JSON.stringify(data.industries),
+        data.budgetMin,
+        data.budgetMax,
+        JSON.stringify(data.preferredFormats),
+        JSON.stringify(data.preferredGeographies),
+        JSON.stringify(data.preferredAudienceTypes)
+      );
+
+      const profile = db.prepare("SELECT * FROM sponsor_profiles WHERE userId = ?").get(req.userId) as any;
+      res.status(201).json({
+        ...profile,
+        industries: safeParseJsonArray(profile.industries),
+        preferredFormats: safeParseJsonArray(profile.preferredFormats),
+        preferredGeographies: safeParseJsonArray(profile.preferredGeographies),
+        preferredAudienceTypes: safeParseJsonArray(profile.preferredAudienceTypes)
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/sponsors/matches", authenticate, (req: any, res) => {
+    try {
+      const profile = db.prepare("SELECT * FROM sponsor_profiles WHERE userId = ?").get(req.userId) as any;
+      if (!profile) return res.status(404).json({ error: "Sponsor profile not found" });
+
+      const now = new Date().toISOString().split('T')[0];
+      const events = db.prepare(`
+        SELECT events.*, users.name as hostName
+        FROM events
+        LEFT JOIN users ON events.hostId = users.id
+        WHERE events.date >= ? AND events.visibility = 'public' AND events.hostId != ?
+      `).all(now, req.userId) as any[];
+
+      const matches = events
+        .map((event) => {
+          const parsedEvent = {
+            ...event,
+            tags: event.tags ? JSON.parse(event.tags) : [],
+            sponsorshipSettings: event.sponsorshipSettings ? JSON.parse(event.sponsorshipSettings) : undefined
+          };
+          const match = computeSponsorEventMatch(parsedEvent, profile);
+          return {
+            ...parsedEvent,
+            matchScore: match.score,
+            matchReason: match.reason
+          };
+        })
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      res.json(matches);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Sponsorship Proposal Routes
+  app.get("/api/proposals", authenticate, (req: any, res) => {
+    try {
+      const proposals = db.prepare(`
+        SELECT * FROM sponsorship_proposals
+        WHERE senderId = ? OR receiverId = ?
+        ORDER BY timestamp DESC
+      `).all(req.userId, req.userId);
+
+      res.json(proposals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/proposals", authenticate, (req: any, res) => {
+    const schema = z.object({
+      eventId: z.string().min(1),
+      eventTitle: z.string().min(1),
+      receiverId: z.string().min(1),
+      message: z.string().min(10),
+      estimatedInvestment: z.number().nonnegative(),
+      proposalType: z.enum(['sponsorship', 'partnership']).optional().default('sponsorship')
+    });
+
+    try {
+      const data = schema.parse(req.body);
+      const sender = db.prepare("SELECT id, name FROM users WHERE id = ?").get(req.userId) as any;
+      if (!sender) return res.status(404).json({ error: "Sender not found" });
+
+      const receiver = db.prepare("SELECT id FROM users WHERE id = ?").get(data.receiverId) as any;
+      if (!receiver) return res.status(404).json({ error: "Receiver not found" });
+
+      const event = db.prepare("SELECT id, hostId, title FROM events WHERE id = ?").get(data.eventId) as any;
+      if (!event) return res.status(404).json({ error: "Event not found" });
+      if (data.proposalType === 'sponsorship') {
+        if (event.hostId !== data.receiverId) {
+          return res.status(400).json({ error: "Receiver must be the host of this event" });
+        }
+      } else {
+        if (event.hostId !== req.userId) {
+          return res.status(403).json({ error: "Only event hosts can send partnership requests" });
+        }
+        const sponsorProfile = db.prepare("SELECT userId FROM sponsor_profiles WHERE userId = ?").get(data.receiverId) as any;
+        if (!sponsorProfile) {
+          return res.status(400).json({ error: "Receiver must have an active sponsor profile" });
+        }
+      }
+
+      const proposalId = Math.random().toString(36).substring(2, 11);
+      const proposalTimestamp = Date.now();
+
+      db.prepare(`
+        INSERT INTO sponsorship_proposals (
+          id, eventId, eventTitle, senderId, senderName, receiverId, message, proposalType, status, timestamp, estimatedInvestment, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(
+        proposalId,
+        data.eventId,
+        data.eventTitle,
+        sender.id,
+        sender.name,
+        data.receiverId,
+        data.message,
+        data.proposalType,
+        proposalTimestamp,
+        data.estimatedInvestment
+      );
+
+      const createdProposal = db.prepare("SELECT * FROM sponsorship_proposals WHERE id = ?").get(proposalId);
+      res.status(201).json(createdProposal);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/proposals/:id/status", authenticate, (req: any, res) => {
+    const schema = z.object({
+      status: z.enum(['accepted', 'declined'])
+    });
+
+    try {
+      const { status } = schema.parse(req.body);
+      const proposal = db.prepare("SELECT * FROM sponsorship_proposals WHERE id = ?").get(req.params.id) as any;
+
+      if (!proposal) return res.status(404).json({ error: "Proposal not found" });
+      if (proposal.receiverId !== req.userId) {
+        return res.status(403).json({ error: "Only the receiver can update proposal status" });
+      }
+      if (proposal.status !== 'pending') {
+        return res.status(400).json({ error: "Proposal status has already been finalized" });
+      }
+
+      db.prepare(`
+        UPDATE sponsorship_proposals
+        SET status = ?, updatedAt = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(status, req.params.id);
+
+      const updatedProposal = db.prepare("SELECT * FROM sponsorship_proposals WHERE id = ?").get(req.params.id);
+      res.json(updatedProposal);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   // API Routes

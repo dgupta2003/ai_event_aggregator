@@ -11,7 +11,7 @@ import {
   Tag, Briefcase, FileText, Mail, Home, Compass, Shield, Edit
 } from 'lucide-react';
 import { EVENTS, SPONSORS, MOCK_USER } from './constants';
-import { Event, Sponsor, ChatMessage, EventFormat, EventSponsorshipSettings, SponsorshipItem, AudienceType, SponsorshipProposal, User } from './types';
+import { Event, Sponsor, ChatMessage, EventFormat, EventSponsorshipSettings, SponsorshipItem, AudienceType, SponsorshipProposal, User, SponsorDirectoryItem, SponsorProfile, SponsorEventMatch } from './types';
 
 // --- Context Management ---
 
@@ -22,9 +22,11 @@ interface EventContextType {
   deleteEvent: (eventId: string) => Promise<void>;
   attendEvent: (eventId: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  fetchProposals: () => Promise<void>;
   user: User | null;
   proposals: SponsorshipProposal[];
-  addProposal: (proposal: SponsorshipProposal) => void;
+  createProposal: (proposal: Omit<SponsorshipProposal, 'id' | 'senderId' | 'senderName' | 'status' | 'timestamp'>) => Promise<void>;
+  updateProposalStatus: (proposalId: string, status: 'accepted' | 'declined') => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -40,9 +42,11 @@ const EventContext = createContext<EventContextType>({
   deleteEvent: async () => {},
   attendEvent: async () => {},
   refreshUser: async () => {},
+  fetchProposals: async () => {},
   user: null,
   proposals: [],
-  addProposal: () => {},
+  createProposal: async () => {},
+  updateProposalStatus: async () => {},
   login: async () => {},
   register: async () => {},
   logout: async () => {},
@@ -135,6 +139,7 @@ const NavBar = () => {
       <div className="hidden md:flex items-center gap-8">
         <Link to="/" className={`text-sm font-medium transition-colors ${isActive('/')}`}>Home</Link>
         <Link to="/explore" className={`text-sm font-medium transition-colors ${isActive('/explore')}`}>Explore</Link>
+        <Link to="/sponsors" className={`text-sm font-medium transition-colors ${isActive('/sponsors')}`}>Sponsors</Link>
         <Link to="/host" className={`text-sm font-medium transition-colors ${isActive('/host')}`}>Host</Link>
         {user && <Link to="/profile" className={`text-sm font-medium transition-colors ${isActive('/profile')}`}>Profile</Link>}
       </div>
@@ -512,6 +517,548 @@ const ExplorePage = () => {
   );
 };
 
+const SponsorsPage = () => {
+  const navigate = useNavigate();
+  const { user, events, createProposal } = useEvents();
+  const [sponsors, setSponsors] = useState<SponsorDirectoryItem[]>([]);
+  const [isMatchedMode, setIsMatchedMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [matchEventId, setMatchEventId] = useState('');
+  const [proposalEventId, setProposalEventId] = useState('');
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorDirectoryItem | null>(null);
+  const [proposalMessage, setProposalMessage] = useState('');
+  const [proposalBudget, setProposalBudget] = useState('1000');
+  const hostedEvents = events.filter(e => e.hostId === user?.id);
+
+  const fetchSponsors = async (eventId?: string) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const query = eventId ? `?eventId=${encodeURIComponent(eventId)}` : '';
+      const response = await fetch(`/api/sponsors${query}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to load sponsors');
+      const data = await response.json();
+      setSponsors(data);
+      setIsMatchedMode(!!eventId);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load sponsors');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSponsors();
+  }, []);
+
+  const filteredSponsors = sponsors.filter((s) => {
+    const searchValue = search.toLowerCase();
+    return (
+      s.companyName.toLowerCase().includes(searchValue) ||
+      s.name.toLowerCase().includes(searchValue) ||
+      s.industries.some((industry) => industry.toLowerCase().includes(searchValue))
+    );
+  });
+
+  const getOutreachMessage = (sponsor: SponsorDirectoryItem, event: Event) => {
+    const audienceType = event.sponsorshipSettings?.audience_type
+      ? event.sponsorshipSettings.audience_type.replace(/_/g, ' ')
+      : 'general public';
+    const offerings = event.sponsorshipSettings?.allowed_item_ids?.length
+      ? SPONSORSHIP_MENU
+          .filter(item => event.sponsorshipSettings?.allowed_item_ids.includes(item.id))
+          .slice(0, 4)
+          .map(item => item.name)
+          .join(', ')
+      : 'custom sponsor visibility options, community engagement, and content placement';
+    const hostContext = [user?.name, user?.location, user?.bio]
+      .filter(Boolean)
+      .join(' • ');
+    const fitLine = sponsor.matchReason
+      ? `Based on our sponsor matching, we believe there is a strong fit: ${sponsor.matchReason}.`
+      : `Your focus on ${sponsor.industries.slice(0, 2).join(' and ')} aligns with our audience and event goals.`;
+
+    return `Hi ${sponsor.companyName} team,\n\nI’m reaching out about a partnership for our event \"${event.title}\" (${event.format}) on ${event.date} at ${event.location}.\n\nEvent highlights:\n- Category: ${event.category}\n- Expected attendance: ${event.capacity}\n- Audience: ${audienceType}\n- Sponsor opportunities: ${offerings}\n\n${fitLine}\n\nWe’re looking for a sponsor who can help us elevate attendee experience while getting meaningful brand exposure. Our current sponsorship estimate is around $${proposalBudget || '1000'}, and we’re open to tailoring a package around your goals.\n\nHost context: ${hostContext || 'Circle event host'}\n\nWould you be open to a quick call this week to discuss a partnership package?\n\nBest,\n${user?.name || 'Event Host'}`;
+  };
+
+  const handleRunMatch = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (!hostedEvents.length) {
+      alert('Host an event first to run sponsor matching.');
+      return;
+    }
+
+    const eventId = matchEventId || hostedEvents[0].id;
+    setMatchEventId(eventId);
+    await fetchSponsors(eventId);
+  };
+
+  const handleClearMatch = async () => {
+    setMatchEventId('');
+    await fetchSponsors();
+  };
+
+  const startProposal = (sponsor: SponsorDirectoryItem) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (!hostedEvents.length) {
+      alert('Host an event first to send sponsor partnership requests.');
+      return;
+    }
+
+    const defaultEvent = (matchEventId ? events.find(e => e.id === matchEventId) : hostedEvents[0]) || hostedEvents[0];
+    const budgetGuess = sponsor.budgetMin && sponsor.budgetMax
+      ? Math.round((sponsor.budgetMin + sponsor.budgetMax) / 2)
+      : 1000;
+
+    setSelectedSponsor(sponsor);
+    setProposalEventId(defaultEvent.id);
+    setProposalBudget(String(budgetGuess));
+    setProposalMessage(getOutreachMessage(sponsor, defaultEvent));
+  };
+
+  useEffect(() => {
+    if (!selectedSponsor || !proposalEventId) return;
+    const selectedEvent = events.find(e => e.id === proposalEventId);
+    if (!selectedEvent) return;
+    setProposalMessage(getOutreachMessage(selectedSponsor, selectedEvent));
+  }, [proposalEventId, proposalBudget]);
+
+  const sendPartnershipRequest = async () => {
+    if (!selectedSponsor || !user) return;
+    const event = events.find(e => e.id === proposalEventId) || hostedEvents[0];
+    if (!event) {
+      alert('Select one of your hosted events first.');
+      return;
+    }
+
+    try {
+      await createProposal({
+        eventId: event.id,
+        eventTitle: event.title,
+        receiverId: selectedSponsor.userId,
+        message: proposalMessage,
+        estimatedInvestment: Number(proposalBudget) || 0,
+        proposalType: 'partnership'
+      });
+      alert('Partnership request sent successfully.');
+      setSelectedSponsor(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to send partnership request');
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-24 px-4 pb-32 max-w-7xl mx-auto">
+      {selectedSponsor && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSponsor(null)}></div>
+          <div className="relative z-10 w-full max-w-2xl glass-card border border-white/10 rounded-3xl p-6 md:p-8">
+            <h3 className="text-2xl font-bold text-white mb-2">Request Partnership</h3>
+            <p className="text-gray-400 text-sm mb-6">Sending to {selectedSponsor.companyName}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Event</label>
+                <div className="relative">
+                  <select
+                    value={proposalEventId || hostedEvents[0]?.id || ''}
+                    onChange={(e) => setProposalEventId(e.target.value)}
+                    className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {hostedEvents.map((event) => (
+                      <option key={event.id} value={event.id} className="bg-gray-900 text-white">{event.title}</option>
+                    ))}
+                  </select>
+                  <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Estimated Budget ($)</label>
+                <input
+                  type="number"
+                  value={proposalBudget}
+                  onChange={(e) => setProposalBudget(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Message</label>
+                <textarea
+                  value={proposalMessage}
+                  onChange={(e) => setProposalMessage(e.target.value)}
+                  rows={8}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button variant="glass" className="flex-1" onClick={() => setSelectedSponsor(null)}>Cancel</Button>
+              <Button className="flex-1" onClick={sendPartnershipRequest}>Send Request</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Sponsors</h1>
+          <p className="text-gray-400">Explore sponsor partners and send direct partnership requests.</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate('/sponsor/signup')}>Become a Sponsor</Button>
+          <Button variant="glass" onClick={() => navigate('/sponsor/dashboard')}>Sponsor Dashboard</Button>
+        </div>
+      </div>
+
+      <div className="glass-card rounded-2xl p-4 md:p-6 mb-8 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sponsors by company, industry, or founder"
+            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div className="md:w-80">
+          <div className="relative">
+            <select
+              value={matchEventId}
+              onChange={(e) => setMatchEventId(e.target.value)}
+              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="" className="bg-gray-900 text-white">Select Event to Match</option>
+              {hostedEvents.map((event) => (
+                <option key={event.id} value={event.id} className="bg-gray-900 text-white">{event.title}</option>
+              ))}
+            </select>
+            <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+          </div>
+        </div>
+        <div className="md:w-auto flex gap-2">
+          <Button className="whitespace-nowrap" onClick={handleRunMatch} icon={Sparkles}>Match Sponsors</Button>
+          <Button variant="glass" className="whitespace-nowrap" onClick={handleClearMatch} disabled={!isMatchedMode}>Clear</Button>
+        </div>
+      </div>
+
+      {isMatchedMode && (
+        <div className="mb-6 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-sm text-purple-200">
+          Showing matched recommendations for your selected event. Partnership messages are auto-generated with event-specific value points.
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-16 text-gray-400">Loading sponsors...</div>
+      ) : error ? (
+        <div className="text-center py-16 text-red-400">{error}</div>
+      ) : filteredSponsors.length === 0 ? (
+        <div className="text-center py-16 text-gray-500">No sponsors found.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredSponsors.map((sponsor) => (
+            <div key={sponsor.userId} className="glass-card rounded-3xl p-6 border border-white/10 hover:border-purple-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <img src={sponsor.avatarUrl || 'https://picsum.photos/seed/sponsor/80'} className="w-12 h-12 rounded-xl object-cover border border-white/20" />
+                <div>
+                  <h3 className="text-lg font-bold text-white leading-tight">{sponsor.companyName}</h3>
+                  <p className="text-xs text-gray-400">Contact: {sponsor.name}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 mb-4 line-clamp-3">{sponsor.bio || 'No sponsor bio provided yet.'}</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {sponsor.industries.slice(0, 3).map((industry) => (
+                  <span key={industry} className="px-2 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-300">{industry}</span>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mb-4 text-xs">
+                <span className="text-gray-500">Budget</span>
+                <span className="text-white">${sponsor.budgetMin} - ${sponsor.budgetMax}</span>
+              </div>
+              {typeof sponsor.matchScore === 'number' && (
+                <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold">Match Score</span>
+                    <span className="text-sm text-white font-bold">{sponsor.matchScore}%</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400">{sponsor.matchReason}</p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                {sponsor.website ? (
+                  <Button variant="glass" className="flex-1 py-2 text-xs" onClick={() => window.open(sponsor.website, '_blank')}>Website</Button>
+                ) : <div className="flex-1" />}
+                <Button className="flex-1 py-2 text-xs" onClick={() => startProposal(sponsor)}>Request Partnership</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SponsorSignupPage = () => {
+  const { user } = useEvents();
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    companyName: '',
+    website: '',
+    bio: '',
+    industries: '',
+    budgetMin: '500',
+    budgetMax: '5000',
+    preferredFormats: [] as EventFormat[],
+    preferredGeographies: '',
+    preferredAudienceTypes: [] as AudienceType[]
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) navigate('/auth');
+  }, [user]);
+
+  const toggleFormat = (format: EventFormat) => {
+    setFormData(prev => ({
+      ...prev,
+      preferredFormats: prev.preferredFormats.includes(format)
+        ? prev.preferredFormats.filter(f => f !== format)
+        : [...prev.preferredFormats, format]
+    }));
+  };
+
+  const toggleAudience = (audience: AudienceType) => {
+    setFormData(prev => ({
+      ...prev,
+      preferredAudienceTypes: prev.preferredAudienceTypes.includes(audience)
+        ? prev.preferredAudienceTypes.filter(a => a !== audience)
+        : [...prev.preferredAudienceTypes, audience]
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/sponsors/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          companyName: formData.companyName,
+          website: formData.website,
+          bio: formData.bio,
+          industries: formData.industries.split(',').map(v => v.trim()).filter(Boolean),
+          budgetMin: Number(formData.budgetMin) || 0,
+          budgetMax: Number(formData.budgetMax) || 0,
+          preferredFormats: formData.preferredFormats,
+          preferredGeographies: formData.preferredGeographies.split(',').map(v => v.trim()).filter(Boolean),
+          preferredAudienceTypes: formData.preferredAudienceTypes
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Failed to save sponsor profile' }));
+        throw new Error(err.error || 'Failed to save sponsor profile');
+      }
+      navigate('/sponsor/dashboard');
+    } catch (error: any) {
+      alert(error.message || 'Failed to save sponsor profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-24 px-4 pb-32 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold text-white mb-2">Become a Sponsor</h1>
+      <p className="text-gray-400 mb-8">Create your sponsor profile to discover and sponsor relevant events.</p>
+
+      <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-6 md:p-8 space-y-6 border border-white/10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Company Name</label>
+            <input value={formData.companyName} onChange={(e) => setFormData(s => ({ ...s, companyName: e.target.value }))} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Website</label>
+            <input value={formData.website} onChange={(e) => setFormData(s => ({ ...s, website: e.target.value }))} placeholder="https://company.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bio</label>
+          <textarea value={formData.bio} onChange={(e) => setFormData(s => ({ ...s, bio: e.target.value }))} rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Industries (comma separated)</label>
+          <input value={formData.industries} onChange={(e) => setFormData(s => ({ ...s, industries: e.target.value }))} required placeholder="Tech, AI, Consumer" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Budget Min ($)</label>
+            <input type="number" value={formData.budgetMin} onChange={(e) => setFormData(s => ({ ...s, budgetMin: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Budget Max ($)</label>
+            <input type="number" value={formData.budgetMax} onChange={(e) => setFormData(s => ({ ...s, budgetMax: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Preferred Formats</label>
+          <div className="flex gap-2 flex-wrap">
+            {(['Online', 'In-Person', 'Hybrid'] as EventFormat[]).map((format) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => toggleFormat(format)}
+                className={`px-3 py-2 rounded-xl text-xs border ${formData.preferredFormats.includes(format) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-white/5 border-white/10 text-gray-400'}`}
+              >
+                {format}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Preferred Audience Types</label>
+          <div className="flex gap-2 flex-wrap">
+            {([
+              'general_public',
+              'students_earlycareer',
+              'professionals',
+              'founders_operators',
+              'executives_investors'
+            ] as AudienceType[]).map((audience) => (
+              <button
+                key={audience}
+                type="button"
+                onClick={() => toggleAudience(audience)}
+                className={`px-3 py-2 rounded-xl text-xs border ${formData.preferredAudienceTypes.includes(audience) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-white/5 border-white/10 text-gray-400'}`}
+              >
+                {audience.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Preferred Geographies (comma separated)</label>
+          <input value={formData.preferredGeographies} onChange={(e) => setFormData(s => ({ ...s, preferredGeographies: e.target.value }))} placeholder="San Francisco, New York, Remote" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        </div>
+
+        <div className="flex gap-3">
+          <Button type="button" variant="glass" className="flex-1" onClick={() => navigate('/sponsors')}>Cancel</Button>
+          <Button type="submit" className="flex-1" disabled={isSaving}>{isSaving ? 'Saving...' : 'Create Sponsor Profile'}</Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const SponsorDashboardPage = () => {
+  const { user } = useEvents();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<SponsorProfile | null>(null);
+  const [matches, setMatches] = useState<SponsorEventMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDashboard = async () => {
+    setIsLoading(true);
+    try {
+      const [profileRes, matchesRes] = await Promise.all([
+        fetch('/api/sponsors/me', { credentials: 'include' }),
+        fetch('/api/sponsors/matches', { credentials: 'include' })
+      ]);
+
+      if (profileRes.status === 404) {
+        navigate('/sponsor/signup');
+        return;
+      }
+      if (!profileRes.ok) throw new Error('Failed to load sponsor profile');
+      if (!matchesRes.ok) throw new Error('Failed to load matched events');
+
+      const profileData = await profileRes.json();
+      const matchData = await matchesRes.json();
+      setProfile(profileData);
+      setMatches(matchData);
+    } catch (error: any) {
+      alert(error.message || 'Failed to load sponsor dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    loadDashboard();
+  }, [user?.id]);
+
+  if (isLoading) {
+    return <div className="min-h-screen pt-32 text-center text-gray-400">Loading sponsor dashboard...</div>;
+  }
+
+  return (
+    <div className="min-h-screen pt-24 px-4 pb-32 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Sponsor Dashboard</h1>
+          <p className="text-gray-400">Discover event opportunities matched to your sponsor profile.</p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/sponsor/signup')}>Edit Sponsor Profile</Button>
+      </div>
+
+      {profile && (
+        <div className="glass-card rounded-2xl p-6 border border-white/10 mb-8">
+          <h3 className="text-xl font-bold text-white mb-2">{profile.companyName}</h3>
+          <p className="text-sm text-gray-400 mb-3">{profile.bio || 'No bio yet.'}</p>
+          <div className="flex flex-wrap gap-2">
+            {profile.industries.map((industry) => (
+              <span key={industry} className="px-2 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-300">{industry}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {matches.length === 0 ? (
+        <div className="text-center py-16 text-gray-500">No event matches found yet.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {matches.map((event) => (
+            <div key={event.id} className="glass-card rounded-3xl p-5 border border-white/10 hover:border-purple-500/30 transition-all">
+              <img src={event.imageUrl || 'https://picsum.photos/seed/event/600/300'} className="w-full h-36 object-cover rounded-xl mb-4" />
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-white font-bold line-clamp-1">{event.title}</h3>
+                <span className="text-xs text-purple-300 font-bold">{event.matchScore}%</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-3 line-clamp-2">{event.matchReason}</p>
+              <p className="text-[11px] text-gray-500 mb-4">{event.date} • {event.location}</p>
+              <div className="flex gap-2">
+                <Button variant="glass" className="flex-1 py-2 text-xs" onClick={() => navigate(`/event/${event.id}`)}>View Event</Button>
+                <Button className="flex-1 py-2 text-xs" onClick={() => navigate(`/event/${event.id}/sponsor`)}>Sponsor</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const EditEventPage = () => {
     const { id } = useParams();
     const { events, updateEvent, user } = useEvents();
@@ -599,29 +1146,35 @@ const EditEventPage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+                              <div className="relative">
                                 <select 
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-purple-500/50 focus:outline-none appearance-none"
-                                    value={formData.category}
-                                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-purple-500/50 focus:outline-none"
+                                  value={formData.category}
+                                  onChange={(e) => setFormData({...formData, category: e.target.value})}
                                 >
-                                    <option className="bg-gray-900" value="Tech">Tech</option>
-                                    <option className="bg-gray-900" value="Art">Art</option>
-                                    <option className="bg-gray-900" value="Sports">Sports</option>
-                                    <option className="bg-gray-900" value="Music">Music</option>
-                                    <option className="bg-gray-900" value="Business">Business</option>
+                                  <option className="bg-gray-900 text-white" value="Tech">Tech</option>
+                                  <option className="bg-gray-900 text-white" value="Art">Art</option>
+                                  <option className="bg-gray-900 text-white" value="Sports">Sports</option>
+                                  <option className="bg-gray-900 text-white" value="Music">Music</option>
+                                  <option className="bg-gray-900 text-white" value="Business">Business</option>
                                 </select>
+                                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                              </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Format</label>
+                              <div className="relative">
                                 <select 
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-purple-500/50 focus:outline-none appearance-none"
-                                    value={formData.format}
-                                    onChange={(e) => setFormData({...formData, format: e.target.value as EventFormat})}
+                                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-purple-500/50 focus:outline-none"
+                                  value={formData.format}
+                                  onChange={(e) => setFormData({...formData, format: e.target.value as EventFormat})}
                                 >
-                                    <option className="bg-gray-900" value="In-Person">In-Person</option>
-                                    <option className="bg-gray-900" value="Online">Online</option>
-                                    <option className="bg-gray-900" value="Hybrid">Hybrid</option>
+                                  <option className="bg-gray-900 text-white" value="In-Person">In-Person</option>
+                                  <option className="bg-gray-900 text-white" value="Online">Online</option>
+                                  <option className="bg-gray-900 text-white" value="Hybrid">Hybrid</option>
                                 </select>
+                                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                              </div>
                             </div>
                         </div>
                     </div>
@@ -740,23 +1293,26 @@ const EditEventPage = () => {
                              <div className="space-y-4">
                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Audience</label>
+                                  <div className="relative">
                                     <select 
-                                        value={formData.sponsorshipSettings?.audience_type}
-                                        onChange={(e) => setFormData({
-                                            ...formData, 
-                                            sponsorshipSettings: { 
-                                                ...formData.sponsorshipSettings!, 
-                                                audience_type: e.target.value as any 
-                                            }
-                                        })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                      value={formData.sponsorshipSettings?.audience_type}
+                                      onChange={(e) => setFormData({
+                                        ...formData, 
+                                        sponsorshipSettings: { 
+                                          ...formData.sponsorshipSettings!, 
+                                          audience_type: e.target.value as any 
+                                        }
+                                      })}
+                                      className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     >
-                                        <option value="general_public">General Public</option>
-                                        <option value="students_earlycareer">Students / Early Career</option>
-                                        <option value="professionals">Professionals</option>
-                                        <option value="founders_operators">Founders / Operators</option>
-                                        <option value="executives_investors">Executives / Investors</option>
+                                      <option className="bg-gray-900 text-white" value="general_public">General Public</option>
+                                      <option className="bg-gray-900 text-white" value="students_earlycareer">Students / Early Career</option>
+                                      <option className="bg-gray-900 text-white" value="professionals">Professionals</option>
+                                      <option className="bg-gray-900 text-white" value="founders_operators">Founders / Operators</option>
+                                      <option className="bg-gray-900 text-white" value="executives_investors">Executives / Investors</option>
                                     </select>
+                                    <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                                  </div>
                                  </div>
                              </div>
                              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
@@ -991,29 +1547,35 @@ ${user.name}`
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+                              <div className="relative">
                                 <select 
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-purple-500/50 focus:outline-none appearance-none"
-                                    value={formData.category}
-                                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-purple-500/50 focus:outline-none"
+                                  value={formData.category}
+                                  onChange={(e) => setFormData({...formData, category: e.target.value})}
                                 >
-                                    <option className="bg-gray-900" value="Tech">Tech</option>
-                                    <option className="bg-gray-900" value="Art">Art</option>
-                                    <option className="bg-gray-900" value="Sports">Sports</option>
-                                    <option className="bg-gray-900" value="Music">Music</option>
-                                    <option className="bg-gray-900" value="Business">Business</option>
+                                  <option className="bg-gray-900 text-white" value="Tech">Tech</option>
+                                  <option className="bg-gray-900 text-white" value="Art">Art</option>
+                                  <option className="bg-gray-900 text-white" value="Sports">Sports</option>
+                                  <option className="bg-gray-900 text-white" value="Music">Music</option>
+                                  <option className="bg-gray-900 text-white" value="Business">Business</option>
                                 </select>
+                                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                              </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Format</label>
+                              <div className="relative">
                                 <select 
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-purple-500/50 focus:outline-none appearance-none"
-                                    value={formData.format}
-                                    onChange={(e) => setFormData({...formData, format: e.target.value as EventFormat})}
+                                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-purple-500/50 focus:outline-none"
+                                  value={formData.format}
+                                  onChange={(e) => setFormData({...formData, format: e.target.value as EventFormat})}
                                 >
-                                    <option className="bg-gray-900" value="In-Person">In-Person</option>
-                                    <option className="bg-gray-900" value="Online">Online</option>
-                                    <option className="bg-gray-900" value="Hybrid">Hybrid</option>
+                                  <option className="bg-gray-900 text-white" value="In-Person">In-Person</option>
+                                  <option className="bg-gray-900 text-white" value="Online">Online</option>
+                                  <option className="bg-gray-900 text-white" value="Hybrid">Hybrid</option>
                                 </select>
+                                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                              </div>
                             </div>
                         </div>
                     </div>
@@ -1158,23 +1720,26 @@ ${user.name}`
                              <div className="space-y-4">
                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Audience</label>
+                                  <div className="relative">
                                     <select 
-                                        value={formData.sponsorshipSettings?.audience_type}
-                                        onChange={(e) => setFormData({
-                                            ...formData, 
-                                            sponsorshipSettings: { 
-                                                ...formData.sponsorshipSettings!, 
-                                                audience_type: e.target.value as any 
-                                            }
-                                        })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                      value={formData.sponsorshipSettings?.audience_type}
+                                      onChange={(e) => setFormData({
+                                        ...formData, 
+                                        sponsorshipSettings: { 
+                                          ...formData.sponsorshipSettings!, 
+                                          audience_type: e.target.value as any 
+                                        }
+                                      })}
+                                      className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     >
-                                        <option value="general_public">General Public</option>
-                                        <option value="students_earlycareer">Students / Early Career</option>
-                                        <option value="professionals">Professionals</option>
-                                        <option value="founders_operators">Founders / Operators</option>
-                                        <option value="executives_investors">Executives / Investors</option>
+                                      <option className="bg-gray-900 text-white" value="general_public">General Public</option>
+                                      <option className="bg-gray-900 text-white" value="students_earlycareer">Students / Early Career</option>
+                                      <option className="bg-gray-900 text-white" value="professionals">Professionals</option>
+                                      <option className="bg-gray-900 text-white" value="founders_operators">Founders / Operators</option>
+                                      <option className="bg-gray-900 text-white" value="executives_investors">Executives / Investors</option>
                                     </select>
+                                    <ChevronRight className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+                                  </div>
                                  </div>
                                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
                                     <div>
@@ -1256,14 +1821,17 @@ ${user.name}`
                              </div>
                              <div className="flex justify-between items-center border-t border-white/10 pt-4 mt-2">
                                  <span className="text-gray-400">Visibility</span>
-                                 <select 
-                                     value={formData.visibility || 'public'}
-                                     onChange={(e) => setFormData({...formData, visibility: e.target.value as 'public' | 'private'})}
-                                     className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                  >
-                                     <option className="bg-gray-900" value="public">Public (Discoverable)</option>
-                                     <option className="bg-gray-900" value="private">Private (Invite Only)</option>
-                                 </select>
+                               <div className="relative">
+                                <select 
+                                  value={formData.visibility || 'public'}
+                                  onChange={(e) => setFormData({...formData, visibility: e.target.value as 'public' | 'private'})}
+                                  className="appearance-none bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 pr-8 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                 >
+                                  <option className="bg-gray-900 text-white" value="public">Public (Discoverable)</option>
+                                  <option className="bg-gray-900 text-white" value="private">Private (Invite Only)</option>
+                                </select>
+                                <ChevronRight className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 rotate-90" />
+                               </div>
                              </div>
                         </div>
 
@@ -1842,10 +2410,12 @@ const OnboardingPage = () => {
 };
 
 const ProfilePage = () => {
-    const { user, events, proposals, isLoading, uploadAvatar, updateProfile, refreshUser } = useEvents();
+  const { user, events, proposals, isLoading, uploadAvatar, updateProfile, refreshUser, updateProposalStatus } = useEvents();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'hosted' | 'attending' | 'proposals'>('attending');
     const [isEditing, setIsEditing] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<SponsorshipProposal | null>(null);
+  const [proposalToast, setProposalToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
     const [editForm, setEditForm] = useState({
         name: '',
         username: '',
@@ -1960,6 +2530,30 @@ const ProfilePage = () => {
     const receivedProposals = proposals.filter(p => p.receiverId === user.id);
     const sentProposals = proposals.filter(p => p.senderId === user.id);
 
+    const statusBadgeClass = (status: SponsorshipProposal['status']) => {
+      if (status === 'accepted') return 'bg-emerald-500/20 text-emerald-400';
+      if (status === 'declined') return 'bg-red-500/20 text-red-400';
+      return 'bg-yellow-500/20 text-yellow-500';
+    };
+
+    const selectedProposalEvent = selectedProposal
+      ? events.find(e => e.id === selectedProposal.eventId)
+      : null;
+
+    const isSelectedProposalReceiver = !!selectedProposal && selectedProposal.receiverId === user.id;
+
+    const handleProposalDecision = async (proposalId: string, status: 'accepted' | 'declined') => {
+      await updateProposalStatus(proposalId, status);
+      setSelectedProposal(null);
+      setProposalToast({
+        visible: true,
+        message: status === 'accepted' ? 'Proposal accepted successfully.' : 'Proposal declined successfully.'
+      });
+      setTimeout(() => {
+        setProposalToast({ visible: false, message: '' });
+      }, 2200);
+    };
+
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
@@ -1977,6 +2571,101 @@ const ProfilePage = () => {
 
     return (
         <div className="min-h-screen pt-24 px-4 pb-32 max-w-4xl mx-auto">
+        {proposalToast.visible && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 duration-300">
+            <div className="bg-emerald-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-emerald-400/30">
+              <Check className="w-5 h-5" />
+              <span className="font-bold text-sm">{proposalToast.message}</span>
+            </div>
+          </div>
+        )}
+
+        {selectedProposal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setSelectedProposal(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-2xl glass-card border border-white/10 rounded-3xl p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-2">Proposal Details</p>
+                  <h3 className="text-2xl font-bold text-white">{selectedProposal.eventTitle}</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {isSelectedProposalReceiver ? `From: ${selectedProposal.senderName}` : 'To: Event Host'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedProposal(null)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Status</p>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusBadgeClass(selectedProposal.status)}`}>
+                      {selectedProposal.status}
+                    </span>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Investment</p>
+                    <p className="text-white font-bold text-lg">${selectedProposal.estimatedInvestment}</p>
+                  </div>
+                </div>
+
+                <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Message</p>
+                  <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{selectedProposal.message}</p>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Sent {new Date(selectedProposal.timestamp).toLocaleString()}</span>
+                  {selectedProposalEvent && (
+                    <button
+                      onClick={() => {
+                        setSelectedProposal(null);
+                        navigate(`/event/${selectedProposal.eventId}`);
+                      }}
+                      className="text-purple-400 hover:text-purple-300"
+                    >
+                      View Event
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3">
+                {isSelectedProposalReceiver && selectedProposal.status === 'pending' ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      className="flex-1"
+                      onClick={() => handleProposalDecision(selectedProposal.id, 'accepted')}
+                    >
+                      Accept Proposal
+                    </Button>
+                    <Button
+                      variant="glass"
+                      className="flex-1"
+                      onClick={() => handleProposalDecision(selectedProposal.id, 'declined')}
+                    >
+                      Decline Proposal
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="glass" className="w-full" onClick={() => setSelectedProposal(null)}>
+                    Close
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
             <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -2128,8 +2817,34 @@ const ProfilePage = () => {
                                             <p className="text-sm text-gray-300 italic leading-relaxed">"{proposal.message}"</p>
                                         </div>
                                         <div className="flex gap-3">
-                                            <Button variant="primary" className="flex-1 py-2.5 text-xs">Accept & Chat</Button>
-                                            <Button variant="glass" className="flex-1 py-2.5 text-xs">Decline</Button>
+                                          <Button
+                                            variant="primary"
+                                            className="flex-1 py-2.5 text-xs"
+                                            disabled={proposal.status !== 'pending'}
+                                            onClick={() => updateProposalStatus(proposal.id, 'accepted')}
+                                          >
+                                            {proposal.status === 'accepted' ? 'Accepted' : 'Accept'}
+                                          </Button>
+                                          <Button
+                                            variant="glass"
+                                            className="flex-1 py-2.5 text-xs"
+                                            disabled={proposal.status !== 'pending'}
+                                            onClick={() => updateProposalStatus(proposal.id, 'declined')}
+                                          >
+                                            {proposal.status === 'declined' ? 'Declined' : 'Decline'}
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            className="flex-1 py-2.5 text-xs"
+                                            onClick={() => setSelectedProposal(proposal)}
+                                          >
+                                            View Details
+                                          </Button>
+                                        </div>
+                                        <div className="mt-3 text-right">
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${statusBadgeClass(proposal.status)}`}>
+                                            {proposal.status}
+                                          </span>
                                         </div>
                                     </div>
                                 ))}
@@ -2152,11 +2867,19 @@ const ProfilePage = () => {
                                     <div key={proposal.id} className="glass-card p-5 rounded-2xl border border-white/10 opacity-80 hover:opacity-100 transition-all">
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-bold text-white truncate pr-4">{proposal.eventTitle}</h4>
-                                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[9px] font-bold uppercase tracking-wider">Pending</span>
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${statusBadgeClass(proposal.status)}`}>{proposal.status}</span>
                                         </div>
                                         <div className="flex justify-between items-end">
                                             <p className="text-sm font-bold text-white">${proposal.estimatedInvestment}</p>
+                                          <div className="flex items-center gap-3">
+                                            <button
+                                              onClick={() => setSelectedProposal(proposal)}
+                                              className="text-[10px] text-purple-400 hover:text-purple-300 uppercase tracking-wider font-bold"
+                                            >
+                                              View Details
+                                            </button>
                                             <p className="text-[10px] text-gray-500">{new Date(proposal.timestamp).toLocaleDateString()}</p>
+                                          </div>
                                         </div>
                                     </div>
                                 ))}
@@ -2243,6 +2966,28 @@ const EventProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
+  const fetchProposals = async () => {
+    try {
+      const response = await fetch('/api/proposals', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setProposals(data);
+      } else if (response.status === 401) {
+        setProposals([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch proposals:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchProposals();
+    } else {
+      setProposals([]);
+    }
+  }, [user?.id]);
+
   const login = async (email: string, password: string) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -2312,6 +3057,7 @@ const EventProvider = ({ children }: { children: React.ReactNode }) => {
       credentials: 'include'
     });
     setUser(null);
+    setProposals([]);
   };
 
   const updateProfile = async (data: Partial<User>) => {
@@ -2431,13 +3177,43 @@ const EventProvider = ({ children }: { children: React.ReactNode }) => {
     await checkAuth();
   };
 
-  const addProposal = (proposal: SponsorshipProposal) => {
-    setProposals(prev => [proposal, ...prev]);
+  const createProposal = async (proposal: Omit<SponsorshipProposal, 'id' | 'senderId' | 'senderName' | 'status' | 'timestamp'>) => {
+    const response = await fetch('/api/proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(proposal),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create proposal' }));
+      throw new Error(err.error || 'Failed to create proposal');
+    }
+
+    const created = await response.json();
+    setProposals(prev => [created, ...prev]);
+  };
+
+  const updateProposalStatus = async (proposalId: string, status: 'accepted' | 'declined') => {
+    const response = await fetch(`/api/proposals/${proposalId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to update proposal' }));
+      throw new Error(err.error || 'Failed to update proposal');
+    }
+
+    const updated = await response.json();
+    setProposals(prev => prev.map(p => p.id === updated.id ? updated : p));
   };
 
   return (
     <EventContext.Provider value={{ 
-      events, addEvent, updateEvent, deleteEvent, attendEvent, refreshUser, user, proposals, addProposal,
+      events, addEvent, updateEvent, deleteEvent, attendEvent, refreshUser, fetchProposals, user, proposals, createProposal, updateProposalStatus,
       login, register, logout, updateProfile, uploadAvatar, isLoading
     }}>
       {children}
@@ -2458,6 +3234,9 @@ const App = () => {
           <Routes>
             <Route path="/" element={<LandingPage onOpenAI={() => setShowAI(true)} />} />
             <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/sponsors" element={<SponsorsPage />} />
+            <Route path="/sponsor/signup" element={<SponsorSignupPage />} />
+            <Route path="/sponsor/dashboard" element={<SponsorDashboardPage />} />
             <Route path="/event/:id" element={<EventDetailsPage />} />
             <Route path="/event/:id/edit" element={<EditEventPage />} />
             <Route path="/event/:id/sponsor" element={<SponsorViewWrapper />} />
